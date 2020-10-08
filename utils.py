@@ -1,5 +1,7 @@
-from torch import Tensor, tensor
+from torch import Tensor, tensor, eye
 from torch import max as torch_max
+
+EPS = tensor([1e-10])  # .cuda()
 
 
 def squared_euc_dists(x: Tensor) -> Tensor:
@@ -40,6 +42,23 @@ def get_p_cond(distances: Tensor, sigmas_sq: Tensor, mask: Tensor) -> Tensor:
     return masked_exp_logits / normalization + 1e-10
 
 
+def get_q_joint(emb_points: Tensor, alpha: int, dist_func: str) -> Tensor:
+    """
+    Calculates the joint probability matrix in embedding space.
+    :param emb_points: Points in embeddings space
+    :param alpha: Number of degrees of freedom in t-distribution
+    :param dist_func: A kay name for a distance function
+    :return: Joint distribution matrix in emb. space
+    """
+    n_points = emb_points.size(0)
+    mask = (-eye(n_points) + 1)  # .cuda()
+    dist_f = distance_functions[dist_func]
+    distances = dist_f(emb_points)
+    q_joint = (1 + distances).pow(-(1 + alpha) / 2) * mask
+    q_joint /= q_joint.sum()
+    return torch_max(q_joint, EPS)
+
+
 def entropy(p: Tensor) -> Tensor:
     """
     Calculates Shannon Entropy for every row of a conditional probability matrix
@@ -57,6 +76,5 @@ def make_joint(distr_cond: Tensor) -> Tensor:
     Too small values are set to fixed epsilon
     """
     n_points = distr_cond.size(0)
-    eps = tensor([1e-10])  # .cuda()
     distr_joint = (distr_cond + distr_cond.t()) / (2 * n_points)
-    return torch_max(distr_joint, eps)
+    return torch_max(distr_joint, EPS)
