@@ -1,7 +1,8 @@
-from torch import Tensor, tensor, eye
+from math import log2
+from torch import Tensor, tensor, eye, ones
 from torch import max as torch_max
 
-EPS = tensor([1e-10])  # .cuda()
+EPS = tensor([1e-10]).cuda()
 
 
 def squared_euc_dists(x: Tensor) -> Tensor:
@@ -27,6 +28,44 @@ distance_functions = {"euc": squared_euc_dists,
                       "cosine": squared_cosine_distances}
 
 
+def calculate_optimized_p_cond(input_points: Tensor,
+                               perplexity: int,
+                               dist_func: str,
+                               tol: float,
+                               max_iter: int):
+    n_points = input_points.size(0)
+    target_entropy = log2(perplexity)
+    diag_mask = (1 - eye(n_points)).cuda()
+
+    dist_f = distance_functions[dist_func]
+    distances = dist_f(input_points)
+
+    # Binary search for optimal squared sigmas
+    min_sigma_sq = 1e-20 * ones(n_points).cuda()
+    max_sigma_sq = 1e2 * ones(n_points).cuda()
+    sq_sigmas = (min_sigma_sq + max_sigma_sq) / 2
+    p_cond = get_p_cond(distances, sq_sigmas, diag_mask)
+    ent_diff = entropy(p_cond) - target_entropy
+    finished = ent_diff.abs() < tol
+
+    curr_iter = 0
+    while curr_iter < max_iter and not finished.all().item():
+        pos_diff = (ent_diff > 0).float().cuda()
+        neg_diff = (ent_diff <= 0).float().cuda()
+
+        max_sigma_sq = pos_diff * sq_sigmas + neg_diff * max_sigma_sq
+        min_sigma_sq = pos_diff * min_sigma_sq + neg_diff * sq_sigmas
+
+        sq_sigmas = finished.logical_not() * (min_sigma_sq + max_sigma_sq) / 2 + finished * sq_sigmas
+        p_cond = get_p_cond(distances, sq_sigmas, diag_mask)
+        ent_diff = entropy(p_cond) - target_entropy
+        finished = ent_diff.abs() < tol
+
+        curr_iter += 1
+
+    return p_cond
+
+
 def get_p_cond(distances: Tensor, sigmas_sq: Tensor, mask: Tensor) -> Tensor:
     """
     Calculates conditional probability distribution given distances and squared sigmas
@@ -42,7 +81,7 @@ def get_p_cond(distances: Tensor, sigmas_sq: Tensor, mask: Tensor) -> Tensor:
     return masked_exp_logits / normalization + 1e-10
 
 
-def get_q_joint(emb_points: Tensor, alpha: int, dist_func: str) -> Tensor:
+def get_q_joint(emb_points: Tensor, dist_func: str, alpha: int, ) -> Tensor:
     """
     Calculates the joint probability matrix in embedding space.
     :param emb_points: Points in embeddings space
@@ -51,7 +90,7 @@ def get_q_joint(emb_points: Tensor, alpha: int, dist_func: str) -> Tensor:
     :return: Joint distribution matrix in emb. space
     """
     n_points = emb_points.size(0)
-    mask = (-eye(n_points) + 1)  # .cuda()
+    mask = (-eye(n_points) + 1).cuda()
     dist_f = distance_functions[dist_func]
     distances = dist_f(emb_points)
     q_joint = (1 + distances).pow(-(1 + alpha) / 2) * mask
