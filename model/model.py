@@ -3,7 +3,7 @@ from torch import nn, Tensor
 from torch.utils.data import TensorDataset
 from torch.optim.optimizer import Optimizer
 
-from utils import EPS, get_q_joint
+from utils import EPS, get_q_joint, calculate_optimized_p_cond, make_joint
 
 
 def loss_function(p_joint: Tensor, q_joint: Tensor) -> Tensor:
@@ -18,41 +18,56 @@ def loss_function(p_joint: Tensor, q_joint: Tensor) -> Tensor:
 
 
 def fit_model(model: nn.Module,
-              x_and_p_joint: TensorDataset,
+              input_points: Tensor,
               opt: Optimizer,
+              perplexity: int,
               n_epochs: int,
-              batch_size: int) -> None:
+              batch_size: int,
+              dist_func_name: str = "euc",
+              tol: float = 1e-4,
+              max_iter: int = 50,
+              ) -> None:
     """
-    Fit model, but the whole p_joint must be calculated
-    beforehand and then fed in by batches
+
     :param model:
-    :param x_and_p_joint:
+    :param input_points:
     :param opt:
+    :param perplexity:
     :param n_epochs:
     :param batch_size:
+    :param dist_func_name:
+    :param tol:
+    :param max_iter:
     :return:
     """
     model.train()
-    n_points = len(x_and_p_joint)
+    n_points = len(input_points)
     for epoch in range(n_epochs):
         train_loss = 0
         for i in range(n_points // batch_size + 1):
             start_idx = i * batch_size
             fin_idx = start_idx + min(batch_size, n_points - start_idx)
-            orig_points_batch, p_joint_batch = x_and_p_joint[start_idx: fin_idx]
+            orig_points_batch = input_points[start_idx: fin_idx]
+            with torch.no_grad():
+                p_cond_in_batch = calculate_optimized_p_cond(orig_points_batch,
+                                                             perplexity,
+                                                             dist_func_name,
+                                                             tol,
+                                                             max_iter)
+                p_joint_in_batch = make_joint(p_cond_in_batch)
             opt.zero_grad()
             embeddings = model(orig_points_batch)
-            q_joint_batch = get_q_joint(embeddings, alpha=1, dist_func="euc")
-            loss = loss_function(p_joint_batch, q_joint_batch)
+            q_joint_in_batch = get_q_joint(embeddings, dist_func_name, alpha=1)
+            loss = loss_function(p_joint_in_batch, q_joint_in_batch)
             train_loss += loss.item()
             loss.backward()
             opt.step()
-        print(f'====> Epoch: {epoch} Average loss: {train_loss / n_points:.4f}')
+        print(f'====> Epoch: {epoch + 1} Average loss: {train_loss / n_points:.4f}')
 
 
 def weights_init(m: nn.Module) -> None:
     if isinstance(m, (nn.Linear,)):
-        nn.init.kaiming_normal(m.weight.data)
+        nn.init.kaiming_normal_(m.weight.data)
         m.bias.data.fill_(0.01)
     elif isinstance(m, (nn.BatchNorm1d,)):
         m.weight.data.fill_(1.0)
