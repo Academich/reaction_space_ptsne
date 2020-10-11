@@ -13,6 +13,7 @@ def loss_function(p_joint: Tensor, q_joint: Tensor) -> Tensor:
     :return: KLDiv value
     """
     # TODO Add here alpha gradient calculation too
+    # TODO Add L2-penalty for early compression?
     return (p_joint * torch.log((p_joint + EPS) / (q_joint + EPS))).sum()
 
 
@@ -21,10 +22,14 @@ def fit_model(model: nn.Module,
               opt: Optimizer,
               perplexity: int,
               n_epochs: int,
+              early_exaggeration: int,
+              early_exaggeration_constant: int,
               batch_size: int,
-              dist_func_name: str = "euc",
-              bin_search_tol: float = 1e-4,
-              bin_search_max_iter: int = 50,
+              dist_func_name: str,
+              bin_search_tol: float,
+              bin_search_max_iter: int,
+              min_allowed_sig_sq: float,
+              max_allowed_sig_sq: float
               ) -> None:
     """
     Fits t-SNE model
@@ -33,11 +38,16 @@ def fit_model(model: nn.Module,
     :param opt: optimizer instance
     :param perplexity: perplexity
     :param n_epochs: Number of epochs for training
+    :param early_exaggeration: Number of first training cycles in which
+    exaggeration will be applied
+    :param early_exaggeration_constant: Constant by which p_joint is multiplied in early exaggeration
     :param batch_size: Batch size for training
     :param dist_func_name: Name of distance function for distance matrix.
     Possible names: "euc", "jaccard", "cosine"
     :param bin_search_tol: Tolerance threshold for binary search to obtain p_cond
     :param bin_search_max_iter: Number of max iterations for binary search
+    :param min_allowed_sig_sq: Minimal allowed value for squared sigmas
+    :param max_allowed_sig_sq: Maximal allowed value for squared sigmas
     :return:
     """
     model.train()
@@ -53,11 +63,16 @@ def fit_model(model: nn.Module,
                                                              perplexity,
                                                              dist_func_name,
                                                              bin_search_tol,
-                                                             bin_search_max_iter)
+                                                             bin_search_max_iter,
+                                                             min_allowed_sig_sq,
+                                                             max_allowed_sig_sq)
                 p_joint_in_batch = make_joint(p_cond_in_batch)
             opt.zero_grad()
             embeddings = model(orig_points_batch)
             q_joint_in_batch = get_q_joint(embeddings, dist_func_name, alpha=1)
+            if early_exaggeration:
+                p_joint_in_batch *= early_exaggeration_constant
+                early_exaggeration -= 1
             loss = loss_function(p_joint_in_batch, q_joint_in_batch)
             train_loss += loss.item()
             loss.backward()
