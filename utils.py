@@ -33,7 +33,9 @@ def calculate_optimized_p_cond(input_points: Tensor,
                                perplexity: int,
                                dist_func: str,
                                tol: float,
-                               max_iter: int):
+                               max_iter: int,
+                               min_allowed_sig_sq: float,
+                               max_allowed_sig_sq: float):
     n_points = input_points.size(0)
     target_entropy = log2(perplexity)
     diag_mask = (1 - eye(n_points)).to(input_points.device)
@@ -42,8 +44,8 @@ def calculate_optimized_p_cond(input_points: Tensor,
     distances = dist_f(input_points)
 
     # Binary search for optimal squared sigmas
-    min_sigma_sq = 1e-20 * ones(n_points).to(input_points.device)
-    max_sigma_sq = 1e2 * ones(n_points).to(input_points.device)
+    min_sigma_sq = (min_allowed_sig_sq + 1e-20) * ones(n_points).to(input_points.device)
+    max_sigma_sq = max_allowed_sig_sq * ones(n_points).to(input_points.device)
     sq_sigmas = (min_sigma_sq + max_sigma_sq) / 2
     p_cond = get_p_cond(distances, sq_sigmas, diag_mask)
     ent_diff = entropy(p_cond) - target_entropy
@@ -63,7 +65,6 @@ def calculate_optimized_p_cond(input_points: Tensor,
         finished = ent_diff.abs() < tol
 
         curr_iter += 1
-
     return p_cond
 
 
