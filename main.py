@@ -1,5 +1,4 @@
-from torch import optim, device
-
+import torch
 from datasets import load_mnist_some_classes
 from model.model import NeuralMapping, fit_model
 from plot_embeddings import plot_embs
@@ -9,13 +8,15 @@ import datetime
 
 if __name__ == '__main__':
     # Defining dataset
-    include_classes = (1, 3, 4, 5, 6)
+    include_classes = (1, 3, 4, 5)
     points, labels = load_mnist_some_classes(include_classes)
 
     # Defining instruments
-    dev = device(config.dev)
+    if config.seed:
+        torch.manual_seed(config.seed)
+    dev = torch.device(config.dev)
     ffnn = NeuralMapping(dim_input=points.size(1)).to(dev)
-    opt = optim.SGD(ffnn.parameters(), **config.optimization_conf)
+    opt = torch.optim.SGD(ffnn.parameters(), **config.optimization_conf)
 
     start = datetime.datetime.now()
     # Training and evaluating
