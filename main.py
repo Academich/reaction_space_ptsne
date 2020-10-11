@@ -1,9 +1,6 @@
-import torch.nn.functional as F
-from torch import optim, tensor, matmul, sum, ones, cat, zeros, device
-from torch.utils.data import TensorDataset
+from torch import optim, device
 
 from datasets import load_mnist_some_classes
-from utils import make_joint
 from model.model import NeuralMapping, fit_model
 from plot_embeddings import plot_embs
 from config import config
