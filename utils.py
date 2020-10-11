@@ -1,8 +1,9 @@
 from math import log2
-from torch import Tensor, tensor, eye, ones
+from torch import Tensor, tensor, eye, ones, device
 from torch import max as torch_max
+from config import config
 
-EPS = tensor([1e-10]).cuda()
+EPS = tensor([1e-10]).to(device(config.dev))
 
 
 def squared_euc_dists(x: Tensor) -> Tensor:
@@ -35,14 +36,14 @@ def calculate_optimized_p_cond(input_points: Tensor,
                                max_iter: int):
     n_points = input_points.size(0)
     target_entropy = log2(perplexity)
-    diag_mask = (1 - eye(n_points)).cuda()
+    diag_mask = (1 - eye(n_points)).to(input_points.device)
 
     dist_f = distance_functions[dist_func]
     distances = dist_f(input_points)
 
     # Binary search for optimal squared sigmas
-    min_sigma_sq = 1e-20 * ones(n_points).cuda()
-    max_sigma_sq = 1e2 * ones(n_points).cuda()
+    min_sigma_sq = 1e-20 * ones(n_points).to(input_points.device)
+    max_sigma_sq = 1e2 * ones(n_points).to(input_points.device)
     sq_sigmas = (min_sigma_sq + max_sigma_sq) / 2
     p_cond = get_p_cond(distances, sq_sigmas, diag_mask)
     ent_diff = entropy(p_cond) - target_entropy
@@ -50,8 +51,8 @@ def calculate_optimized_p_cond(input_points: Tensor,
 
     curr_iter = 0
     while curr_iter < max_iter and not finished.all().item():
-        pos_diff = (ent_diff > 0).float().cuda()
-        neg_diff = (ent_diff <= 0).float().cuda()
+        pos_diff = (ent_diff > 0).float()
+        neg_diff = (ent_diff <= 0).float()
 
         max_sigma_sq = pos_diff * sq_sigmas + neg_diff * max_sigma_sq
         min_sigma_sq = pos_diff * min_sigma_sq + neg_diff * sq_sigmas
@@ -90,7 +91,7 @@ def get_q_joint(emb_points: Tensor, dist_func: str, alpha: int, ) -> Tensor:
     :return: Joint distribution matrix in emb. space
     """
     n_points = emb_points.size(0)
-    mask = (-eye(n_points) + 1).cuda()
+    mask = (-eye(n_points) + 1).to(emb_points.device)
     dist_f = distance_functions[dist_func]
     distances = dist_f(emb_points)
     q_joint = (1 + distances).pow(-(1 + alpha) / 2) * mask

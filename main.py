@@ -1,25 +1,32 @@
 import torch.nn.functional as F
-from torch import optim, tensor, matmul, sum, ones, cat, zeros
+from torch import optim, tensor, matmul, sum, ones, cat, zeros, device
 from torch.utils.data import TensorDataset
 
 from datasets import load_mnist_some_classes
 from utils import make_joint
 from model.model import NeuralMapping, fit_model
 from plot_embeddings import plot_embs
+from config import config
 
 import datetime
 
 if __name__ == '__main__':
+    # Defining dataset
     include_classes = (1, 3, 4, 5, 6)
     points, labels = load_mnist_some_classes(include_classes)
+
+    # Defining instruments
+    dev = device(config.dev)
+    ffnn = NeuralMapping(dim_input=points.size(1)).to(dev)
+    opt = optim.SGD(ffnn.parameters(), **config.optimization_conf)
+
     start = datetime.datetime.now()
-    ffnn = NeuralMapping(dim_input=points.size(1)).cuda()
-    opt = optim.SGD(ffnn.parameters(), lr=0.05, momentum=0.9)
-    fit_model(ffnn, points.cuda(), opt, perplexity=100, n_epochs=10, batch_size=200)
+    # Training and evaluating
+    init_embs = ffnn(points.to(dev)).cpu().detach().numpy()
+    fit_model(ffnn, points.to(dev), opt, **config.training_params)
     fin = datetime.datetime.now()
-    print("time elapsed:", fin - start)
     ffnn.eval()
-    final_embs = ffnn(points.cuda()).cpu().detach().numpy()
-    plot_embs(final_embs, labels.numpy())
+    final_embs = ffnn(points.to(dev)).cpu().detach().numpy()
 
-
+    print("time elapsed:", fin - start)
+    plot_embs(init_embs, final_embs, labels.numpy())
