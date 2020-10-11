@@ -1,0 +1,14 @@
+device: "cuda"
+
+optimization:
+  lr: 0.05
+  momentum: 0.9
+
+training:
+  perplexity: 100
+  n_epochs: 10
+  batch_size: 200
+  bin_search_max_iter: 50
+  bin_search_tol: 0.0001
+  dist_func_name: "euc"
+
