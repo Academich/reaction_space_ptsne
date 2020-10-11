@@ -8,6 +8,7 @@ class Config:
 
     def __init__(self):
         self.dev = conf_dict["device"]
+        self.seed = conf_dict["seed"]
         self.optimization_conf = conf_dict["optimization"]
         self.training_params = conf_dict["training"]
 
