@@ -1,6 +1,5 @@
 import torch
 from torch import nn, Tensor
-from torch.utils.data import TensorDataset
 from torch.optim.optimizer import Optimizer
 
 from utils import EPS, get_q_joint, calculate_optimized_p_cond, make_joint
@@ -24,20 +23,21 @@ def fit_model(model: nn.Module,
               n_epochs: int,
               batch_size: int,
               dist_func_name: str = "euc",
-              tol: float = 1e-4,
-              max_iter: int = 50,
+              bin_search_tol: float = 1e-4,
+              bin_search_max_iter: int = 50,
               ) -> None:
     """
-
-    :param model:
-    :param input_points:
-    :param opt:
-    :param perplexity:
-    :param n_epochs:
-    :param batch_size:
-    :param dist_func_name:
-    :param tol:
-    :param max_iter:
+    Fits t-SNE model
+    :param model: nn.Module instance
+    :param input_points: tensor of original points
+    :param opt: optimizer instance
+    :param perplexity: perplexity
+    :param n_epochs: Number of epochs for training
+    :param batch_size: Batch size for training
+    :param dist_func_name: Name of distance function for distance matrix.
+    Possible names: "euc", "jaccard", "cosine"
+    :param bin_search_tol: Tolerance threshold for binary search to obtain p_cond
+    :param bin_search_max_iter: Number of max iterations for binary search
     :return:
     """
     model.train()
@@ -52,8 +52,8 @@ def fit_model(model: nn.Module,
                 p_cond_in_batch = calculate_optimized_p_cond(orig_points_batch,
                                                              perplexity,
                                                              dist_func_name,
-                                                             tol,
-                                                             max_iter)
+                                                             bin_search_tol,
+                                                             bin_search_max_iter)
                 p_joint_in_batch = make_joint(p_cond_in_batch)
             opt.zero_grad()
             embeddings = model(orig_points_batch)
