@@ -1,14 +1,19 @@
 device: "cuda"
+seed: 17
 
 optimization:
   lr: 0.05
   momentum: 0.9
 
 training:
-  perplexity: 100
+  perplexity: 30
   n_epochs: 10
+  early_exaggeration: 50
+  early_exaggeration_constant: 5
   batch_size: 200
   bin_search_max_iter: 50
   bin_search_tol: 0.0001
   dist_func_name: "euc"
+  min_allowed_sig_sq: 0
+  max_allowed_sig_sq: 1000
 
