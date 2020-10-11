@@ -11,5 +11,5 @@ def plot_embs(initial_embs, final_embs, labels=None):
     ax[0].set_title("Before training")
     ax[1].scatter(x, y, c=labels, s=2)
     ax[1].set_title("After training")
-    plt.suptitle("Пространство представлений t-SNE")
+    plt.suptitle("Final embedding space")
     plt.show()
