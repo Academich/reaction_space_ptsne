@@ -8,7 +8,7 @@ import datetime
 
 if __name__ == '__main__':
     # Defining dataset
-    include_classes = (1, 3, 4, 5)
+    include_classes = (1, 2, 3, 4, 5, 6, 7, 8, 9)
     points, labels = load_mnist_some_classes(include_classes)
 
     # Defining instruments
@@ -16,7 +16,7 @@ if __name__ == '__main__':
         torch.manual_seed(config.seed)
     dev = torch.device(config.dev)
     ffnn = NeuralMapping(dim_input=points.size(1)).to(dev)
-    opt = torch.optim.SGD(ffnn.parameters(), **config.optimization_conf)
+    opt = torch.optim.Adam(ffnn.parameters(), **config.optimization_conf)
 
     start = datetime.datetime.now()
     # Training and evaluating
@@ -27,4 +27,4 @@ if __name__ == '__main__':
     final_embs = ffnn(points.to(dev)).cpu().detach().numpy()
 
     print("time elapsed:", fin - start)
-    plot_embs(init_embs, final_embs, labels.numpy())
+    plot_embs(init_embs, final_embs, labels)
