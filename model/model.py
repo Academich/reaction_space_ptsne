@@ -1,6 +1,7 @@
 import torch
 from torch import nn, Tensor
 from torch.optim.optimizer import Optimizer
+from torch.utils.data import DataLoader, Dataset
 
 from utils import EPS, get_q_joint, calculate_optimized_p_cond, make_joint
 
@@ -18,7 +19,7 @@ def loss_function(p_joint: Tensor, q_joint: Tensor) -> Tensor:
 
 
 def fit_model(model: nn.Module,
-              input_points: Tensor,
+              input_points: Dataset,
               opt: Optimizer,
               perplexity: int,
               n_epochs: int,
@@ -50,14 +51,12 @@ def fit_model(model: nn.Module,
     :param max_allowed_sig_sq: Maximal allowed value for squared sigmas
     :return:
     """
-    model.train()
     n_points = len(input_points)
+    train_dl = DataLoader(input_points, batch_size=batch_size, shuffle=True)
     for epoch in range(n_epochs):
         train_loss = 0
-        for i in range(n_points // batch_size + 1):
-            start_idx = i * batch_size
-            fin_idx = start_idx + min(batch_size, n_points - start_idx)
-            orig_points_batch = input_points[start_idx: fin_idx]
+        for list_with_batch in train_dl:
+            orig_points_batch = list_with_batch[0]  # because it is a list of len 1
             with torch.no_grad():
                 p_cond_in_batch = calculate_optimized_p_cond(orig_points_batch,
                                                              perplexity,
