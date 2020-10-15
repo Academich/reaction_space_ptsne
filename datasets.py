@@ -26,9 +26,10 @@ def load_mnist_some_classes(include_labels: Optional[Tuple] = None, n_rows: int 
 
 class SmilesDataset(Dataset):
 
-    def __init__(self, filepath, r=3, n_bits=2048):
+    def __init__(self, filepath, dev, r=3, n_bits=2048):
         self.filepath = filepath
         self.r = r
+        self.dev = dev
         self.n_bits = n_bits
         with open(self.filepath) as _file:
             self.smiles = [s.rstrip() for s in _file.readlines()]
@@ -40,4 +41,5 @@ class SmilesDataset(Dataset):
         return len(self.smiles)
 
     def __getitem__(self, idx):
-        return ecfp(self.smiles[idx], r=self.r, nBits=self.n_bits), self.labels[idx]
+        descriptors = torch.from_numpy(ecfp(self.smiles[idx], r=self.r, nBits=self.n_bits)).to(self.dev)
+        return descriptors, self.labels[idx]

@@ -13,11 +13,11 @@ def plot_embs(trained_model: Module,
     for ref_embs_batch, labels_batch in get_batch_embeddings(untrained_ref_model, ds, bs):
         x_init = ref_embs_batch[:, 0]
         y_init = ref_embs_batch[:, 1]
-        ax[0].scatter(x_init, y_init, c=labels_batch, s=2, cmap="hsv")
+        ax[0].scatter(x_init.cpu(), y_init.cpu(), c=labels_batch, s=2, cmap="hsv")
     for trained_embs_batch, labels_batch in get_batch_embeddings(trained_model, ds, bs):
         x = trained_embs_batch[:, 0]
         y = trained_embs_batch[:, 1]
-        ax[1].scatter(x, y, c=labels_batch, s=2, cmap="hsv")
+        ax[1].scatter(x.cpu(), y.cpu(), c=labels_batch, s=2, cmap="hsv")
     ax[0].set_title("Before training")
     ax[1].set_title("After training")
     plt.suptitle("Final embedding space")
