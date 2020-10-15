@@ -3,7 +3,7 @@ from torch import nn, Tensor
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, Dataset
 
-from utils import EPS, get_q_joint, calculate_optimized_p_cond, make_joint
+from utils.utils import EPS, get_q_joint, calculate_optimized_p_cond, make_joint
 
 
 def loss_function(p_joint: Tensor, q_joint: Tensor) -> Tensor:
