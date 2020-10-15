@@ -51,12 +51,13 @@ def fit_model(model: nn.Module,
     :param max_allowed_sig_sq: Maximal allowed value for squared sigmas
     :return:
     """
+    model.train()
     n_points = len(input_points)
     train_dl = DataLoader(input_points, batch_size=batch_size, shuffle=True)
     for epoch in range(n_epochs):
         train_loss = 0
         for list_with_batch in train_dl:
-            orig_points_batch = list_with_batch[0]  # because it is a list of len 1
+            orig_points_batch, _ = list_with_batch  # because it is a list of len 1
             with torch.no_grad():
                 p_cond_in_batch = calculate_optimized_p_cond(orig_points_batch,
                                                              perplexity,
@@ -77,6 +78,25 @@ def fit_model(model: nn.Module,
             loss.backward()
             opt.step()
         print(f'====> Epoch: {epoch + 1} Average loss: {train_loss / n_points:.4f}')
+
+
+def get_batch_embeddings(model: nn.Module,
+                         input_points: Dataset,
+                         batch_size: int,
+                         ) -> Tensor:
+    """
+    Yields final embeddings for every batch in dataset
+    :param model:
+    :param input_points:
+    :param batch_size:
+    :return:
+    """
+    model.eval()
+    test_dl = DataLoader(input_points, batch_size=batch_size, shuffle=False)
+    for batch_points, batch_labels in test_dl:
+        with torch.no_grad():
+            embeddings = model(batch_points)
+            yield embeddings, batch_labels
 
 
 def weights_init(m: nn.Module) -> None:
