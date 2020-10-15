@@ -1,7 +1,7 @@
 import torch
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import TensorDataset
 from datasets import load_mnist_some_classes
-from model.model import NeuralMapping, fit_model
+from model.model import NeuralMapping, fit_model, get_batch_embeddings
 from plot_embeddings import plot_embs
 from config import config
 
@@ -18,6 +18,7 @@ if __name__ == '__main__':
         torch.manual_seed(config.seed)
     dev = torch.device(config.dev)
     ffnn = NeuralMapping(dim_input=dim_input).to(dev)
+    untrained_ref_ffnn = NeuralMapping(dim_input=dim_input).to(dev)
     opt = torch.optim.Adam(ffnn.parameters(), **config.optimization_conf)
     points = points.to(dev)
     points_ds = TensorDataset(points)
@@ -25,14 +26,8 @@ if __name__ == '__main__':
     # Training and evaluating
     start = datetime.datetime.now()
 
-    init_embs = ffnn(points).cpu().detach().numpy()
-    ffnn.train()
     fit_model(ffnn, points_ds, opt, **config.training_params)
-    ffnn.eval()
-    final_embs = ffnn(points).cpu().detach().numpy()
+    plot_embs(ffnn, untrained_ref_ffnn, points_ds)
 
     fin = datetime.datetime.now()
     print("time elapsed:", fin - start)
-
-    # Plotting result
-    plot_embs(init_embs, final_embs, labels)
