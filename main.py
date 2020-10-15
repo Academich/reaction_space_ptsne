@@ -27,7 +27,11 @@ if __name__ == '__main__':
     start = datetime.datetime.now()
 
     fit_model(ffnn, points_ds, opt, **config.training_params)
-    plot_embs(ffnn, untrained_ref_ffnn, points_ds)
 
     fin = datetime.datetime.now()
-    print("time elapsed:", fin - start)
+    print("Training time:", fin - start)
+
+    plot_embs(ffnn, untrained_ref_ffnn, points_ds)
+
+
+
