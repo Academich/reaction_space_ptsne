@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import TensorDataset
 from datasets import load_mnist_some_classes
-from model.model import NeuralMapping, fit_model, get_batch_embeddings
+from model.model import NeuralMapping, fit_model
 from plot_embeddings import plot_embs
 from config import config
 
@@ -21,7 +21,7 @@ if __name__ == '__main__':
     untrained_ref_ffnn = NeuralMapping(dim_input=dim_input).to(dev)
     opt = torch.optim.Adam(ffnn.parameters(), **config.optimization_conf)
     points = points.to(dev)
-    points_ds = TensorDataset(points)
+    points_ds = TensorDataset(points, labels)
 
     # Training and evaluating
     start = datetime.datetime.now()
