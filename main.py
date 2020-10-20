@@ -14,8 +14,13 @@ if __name__ == '__main__':
     dev = torch.device(config.dev)
     print(dev)
 
+    # TODO В конфиг это
     n_bits = 4096
-    points_ds = SmilesDataset("data/nuclear.smi", dev, n_bits=n_bits)
+    filepath = "data/nuclear.smi"
+    save_flag = False
+
+    print(filepath)
+    points_ds = SmilesDataset(filepath, dev, n_bits=n_bits)
     dim_input = n_bits
 
     ffnn = NeuralMapping(dim_input=dim_input).to(dev)
@@ -25,7 +30,7 @@ if __name__ == '__main__':
     # Training and evaluating
     start = datetime.datetime.now()
 
-    fit_model(ffnn, points_ds, opt, **config.training_params, save_model_flag=False)
+    fit_model(ffnn, points_ds, opt, **config.training_params, save_model_flag=save_flag)
 
     fin = datetime.datetime.now()
     print("Training time:", fin - start)
