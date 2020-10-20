@@ -1,3 +1,5 @@
+import datetime
+
 import torch
 from torch import nn, Tensor
 from torch.optim.optimizer import Optimizer
@@ -30,7 +32,8 @@ def fit_model(model: nn.Module,
               bin_search_tol: float,
               bin_search_max_iter: int,
               min_allowed_sig_sq: float,
-              max_allowed_sig_sq: float
+              max_allowed_sig_sq: float,
+              save_model_flag: bool = True
               ) -> None:
     """
     Fits t-SNE model
@@ -49,15 +52,17 @@ def fit_model(model: nn.Module,
     :param bin_search_max_iter: Number of max iterations for binary search
     :param min_allowed_sig_sq: Minimal allowed value for squared sigmas
     :param max_allowed_sig_sq: Maximal allowed value for squared sigmas
+    :param save_model_flag: A flag whather to save model or not
     :return:
     """
     model.train()
     n_points = len(input_points)
     train_dl = DataLoader(input_points, batch_size=batch_size, shuffle=True)
     for epoch in range(n_epochs):
+        epoch_start_time = datetime.datetime.now()
         train_loss = 0
         for list_with_batch in train_dl:
-            orig_points_batch, _ = list_with_batch  # because it is a list of len 1
+            orig_points_batch, _ = list_with_batch
             with torch.no_grad():
                 p_cond_in_batch = calculate_optimized_p_cond(orig_points_batch,
                                                              perplexity,
@@ -66,10 +71,12 @@ def fit_model(model: nn.Module,
                                                              bin_search_max_iter,
                                                              min_allowed_sig_sq,
                                                              max_allowed_sig_sq)
+                if p_cond_in_batch is None:
+                    continue
                 p_joint_in_batch = make_joint(p_cond_in_batch)
             opt.zero_grad()
             embeddings = model(orig_points_batch)
-            q_joint_in_batch = get_q_joint(embeddings, dist_func_name, alpha=1)
+            q_joint_in_batch = get_q_joint(embeddings, "euc", alpha=1)
             if early_exaggeration:
                 p_joint_in_batch *= early_exaggeration_constant
                 early_exaggeration -= 1
@@ -77,7 +84,12 @@ def fit_model(model: nn.Module,
             train_loss += loss.item()
             loss.backward()
             opt.step()
-        print(f'====> Epoch: {epoch + 1} Average loss: {train_loss / n_points:.4f}')
+        epoch_end_time = datetime.datetime.now()
+        time_elapsed = epoch_end_time - epoch_start_time
+        if save_model_flag and (epoch + 1) % 5 == 0:
+            save_model(model, path=f"model_dist_{dist_func_name}_per_{perplexity}_bs_{batch_size}_epoch_{epoch + 1}.pt")
+            print("Model is saved")
+        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {train_loss / n_points:.4f}')
 
 
 def get_batch_embeddings(model: nn.Module,
@@ -97,6 +109,17 @@ def get_batch_embeddings(model: nn.Module,
         with torch.no_grad():
             embeddings = model(batch_points)
             yield embeddings, batch_labels
+
+
+def save_model(model: nn.Module, path: str) -> None:
+    """
+    Saves model in a .pt file
+    :param model:
+    :param path:
+    :return:
+    """
+    torch.save(model, path)
+    print('Model saved as %s' % path)
 
 
 def weights_init(m: nn.Module) -> None:
