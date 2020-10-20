@@ -1,12 +1,12 @@
 from math import log2
-from torch import Tensor, tensor, eye, ones, device
+from torch import tensor, eye, ones, device, isnan
 from torch import max as torch_max
 from config import config
 
 EPS = tensor([1e-10]).to(device(config.dev))
 
 
-def squared_euc_dists(x: Tensor) -> Tensor:
+def squared_euc_dists(x: tensor) -> tensor:
     """
     Calculates squared euclidean distances between rows
     :param x: Matrix of input points (n_points, n_dimensions)
@@ -16,11 +16,15 @@ def squared_euc_dists(x: Tensor) -> Tensor:
     return sq_norms + sq_norms.unsqueeze(1) - 2 * x @ x.t()
 
 
-def squared_jaccard_distances(x: Tensor) -> Tensor:
-    raise NotImplementedError
+def squared_jaccard_distances(x: tensor) -> tensor:
+    n_ones = x.sum(dim=1)
+    intersection = x @ x.t()
+    sum_of_ones = n_ones + n_ones.unsqueeze(1)
+    similarity = intersection / (sum_of_ones - intersection)
+    return 1 - similarity
 
 
-def squared_cosine_distances(x: Tensor) -> Tensor:
+def squared_cosine_distances(x: tensor) -> tensor:
     raise NotImplementedError
 
 
@@ -29,7 +33,7 @@ distance_functions = {"euc": squared_euc_dists,
                       "cosine": squared_cosine_distances}
 
 
-def calculate_optimized_p_cond(input_points: Tensor,
+def calculate_optimized_p_cond(input_points: tensor,
                                perplexity: int,
                                dist_func: str,
                                tol: float,
@@ -52,7 +56,10 @@ def calculate_optimized_p_cond(input_points: Tensor,
     finished = ent_diff.abs() < tol
 
     curr_iter = 0
-    while curr_iter < max_iter and not finished.all().item():
+    while not finished.all().item():
+        if curr_iter >= max_iter:
+            print("Warning! Exceeded max iter. Discarding batch")
+            return
         pos_diff = (ent_diff > 0).float()
         neg_diff = (ent_diff <= 0).float()
 
@@ -63,12 +70,14 @@ def calculate_optimized_p_cond(input_points: Tensor,
         p_cond = get_p_cond(distances, sq_sigmas, diag_mask)
         ent_diff = entropy(p_cond) - target_entropy
         finished = ent_diff.abs() < tol
-
         curr_iter += 1
+    if isnan(ent_diff.max()):
+        print("Warning! Entropy is nan. Discarding batch")
+        return
     return p_cond
 
 
-def get_p_cond(distances: Tensor, sigmas_sq: Tensor, mask: Tensor) -> Tensor:
+def get_p_cond(distances: tensor, sigmas_sq: tensor, mask: tensor) -> tensor:
     """
     Calculates conditional probability distribution given distances and squared sigmas
     :param distances: Matrix of squared distances ||x_i - x_j||^2
@@ -76,14 +85,14 @@ def get_p_cond(distances: Tensor, sigmas_sq: Tensor, mask: Tensor) -> Tensor:
     :param mask: A mask tensor to set diagonal elements to zero
     :return: Conditional probability matrix
     """
-    logits = -distances / (2 * sigmas_sq.view(-1, 1))
+    logits = -distances / (2 * torch_max(sigmas_sq, EPS).view(-1, 1))
     logits.exp_()
     masked_exp_logits = logits * mask
-    normalization = masked_exp_logits.sum(1).unsqueeze(1)
+    normalization = torch_max(masked_exp_logits.sum(1), EPS).unsqueeze(1)
     return masked_exp_logits / normalization + 1e-10
 
 
-def get_q_joint(emb_points: Tensor, dist_func: str, alpha: int, ) -> Tensor:
+def get_q_joint(emb_points: tensor, dist_func: str, alpha: int, ) -> tensor:
     """
     Calculates the joint probability matrix in embedding space.
     :param emb_points: Points in embeddings space
@@ -100,7 +109,7 @@ def get_q_joint(emb_points: Tensor, dist_func: str, alpha: int, ) -> Tensor:
     return torch_max(q_joint, EPS)
 
 
-def entropy(p: Tensor) -> Tensor:
+def entropy(p: tensor) -> tensor:
     """
     Calculates Shannon Entropy for every row of a conditional probability matrix
     :param p: Conditional probability matrix, where every row sums up to 1
@@ -109,7 +118,7 @@ def entropy(p: Tensor) -> Tensor:
     return -(p * p.log2()).sum(dim=1)
 
 
-def make_joint(distr_cond: Tensor) -> Tensor:
+def make_joint(distr_cond: tensor) -> tensor:
     """
     Makes a joint probability distribution out of conditional distribution
     :param distr_cond: Conditional distribution matrix
