@@ -32,10 +32,12 @@ class SmilesDataset(Dataset):
         self.dev = dev
         self.n_bits = n_bits
         with open(self.filepath) as _file:
-            self.smiles = [s.rstrip() for s in _file.readlines()]
-
-        # Заглушка для labels
-        self.labels = torch.tensor([1 for _ in self.smiles])
+            self.data = [s.rstrip().split() for s in _file.readlines()]
+            self.smiles = [d[0] for d in self.data]
+            try:
+                self.labels = [int(d[1]) for d in self.data]
+            except IndexError:
+                self.labels = [0 for _ in self.data]
 
     def __len__(self):
         return len(self.smiles)
