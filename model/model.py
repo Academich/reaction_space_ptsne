@@ -87,7 +87,8 @@ def fit_model(model: nn.Module,
         epoch_end_time = datetime.datetime.now()
         time_elapsed = epoch_end_time - epoch_start_time
         if save_model_flag and (epoch + 1) % 5 == 0:
-            save_model(model, path=f"model_dist_{dist_func_name}_per_{perplexity}_bs_{batch_size}_epoch_{epoch + 1}.pt")
+            _path = "model/" + f"model_dist_{dist_func_name}_per_{perplexity}_bs_{batch_size}_epoch_{epoch + 1}.pt"
+            save_model(model, path=_path)
             print("Model is saved")
         print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {train_loss / n_points:.4f}')
 
@@ -145,3 +146,29 @@ class NeuralMapping(nn.Module):
     def forward(self, x):
         x = self.relu(self.bn_1(self.linear_1(x)))
         return self.linear_2(x)
+
+
+class NeuralMappingDeeper(nn.Module):
+
+    def __init__(self, dim_input, dim_emb=2):
+        super().__init__()
+        self.linear_1 = nn.Linear(dim_input, dim_input)
+        self.bn_1 = nn.BatchNorm1d(dim_input)
+        self.linear_2 = nn.Linear(dim_input, dim_input)
+        self.bn_2 = nn.BatchNorm1d(dim_input)
+        self.linear_3 = nn.Linear(dim_input, dim_input)
+        self.bn_3 = nn.BatchNorm1d(dim_input)
+        self.linear_4 = nn.Linear(dim_input, dim_emb)
+        self.relu = nn.ReLU()
+
+        self.apply(weights_init)
+
+    def forward(self, x):
+        x = self.linear_1(x)
+        x = self.bn_1(x)
+        x = self.linear_2(self.relu(x))
+        x = self.bn_2(x)
+        x = self.linear_3(self.relu(x))
+        x = self.bn_3(x)
+        x = self.linear_4(self.relu(x))
+        return x
