@@ -1,18 +1,23 @@
 device: "cuda"
 seed: 17
+save_model: 0
+
+dataset:
+  name: "tox21"
+  n_bits: 4096
 
 optimization:
   lr: 0.001
 
 training:
   perplexity: 30
-  n_epochs: 20
+  n_epochs: 30
   early_exaggeration: 0
   early_exaggeration_constant: 5
-  batch_size: 500
-  bin_search_max_iter: 1000
+  batch_size: 4000
+  bin_search_max_iter: 100
   bin_search_tol: 0.0001
-  dist_func_name: "euc"
+  dist_func_name: "jaccard"
   min_allowed_sig_sq: 0
-  max_allowed_sig_sq: 1000
+  max_allowed_sig_sq: 10000
 
