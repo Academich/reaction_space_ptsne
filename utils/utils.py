@@ -103,7 +103,7 @@ def get_q_joint(emb_points: tensor, dist_func: str, alpha: int, ) -> tensor:
     n_points = emb_points.size(0)
     mask = (-eye(n_points) + 1).to(emb_points.device)
     dist_f = distance_functions[dist_func]
-    distances = dist_f(emb_points)
+    distances = dist_f(emb_points) / alpha
     q_joint = (1 + distances).pow(-(1 + alpha) / 2) * mask
     q_joint /= q_joint.sum()
     return torch_max(q_joint, EPS)
