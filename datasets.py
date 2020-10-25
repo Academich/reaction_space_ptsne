@@ -1,12 +1,13 @@
 import pickle
 import gzip
-from typing import Tuple, Optional
+from typing import Tuple, Optional, Dict, Any
 import numpy as np
 
 import torch
 from torch.utils.data import Dataset
 
 from utils.descriptors import ecfp
+from utils.reactions import reaction_fps
 
 
 def load_mnist_some_classes(include_labels: Optional[Tuple] = None, n_rows: int = None) -> np.array:
@@ -45,3 +46,36 @@ class SmilesDataset(Dataset):
     def __getitem__(self, idx):
         descriptors = torch.from_numpy(ecfp(self.smiles[idx], r=self.r, nBits=self.n_bits)).to(self.dev)
         return descriptors, self.labels[idx]
+
+
+class ReactionSmilesDataset(Dataset):
+
+    def __init__(self,
+                 filepath: str,
+                 dev: str,
+                 fp_method: str,
+                 params: Dict[str, Any]) -> None:
+        self.filepath = filepath  # path to .csv file
+        self.dev = dev
+        self.smiles = []
+        self.fp_method = fp_method
+        self.params = params
+        with open(self.filepath) as _file:
+            for i, smi in enumerate(_file):
+                if i == 0:
+                    # skip header of csv
+                    continue
+                self.smiles.append(smi.replace(",", ">").rstrip("\n"))
+
+        # trivial labels for now
+        self.labels = [0 for _ in self.smiles]
+
+    def __len__(self):
+        return len(self.smiles)
+
+    def __getitem__(self, idx):
+        descriptors = reaction_fps(self.smiles[idx],
+                                   fp_method=self.fp_method,
+                                   **self.params)
+
+        return torch.from_numpy(descriptors).float().to(self.dev), self.labels[idx]
