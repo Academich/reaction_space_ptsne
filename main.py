@@ -1,3 +1,4 @@
+import json
 import torch
 from torch.utils.data import TensorDataset
 
@@ -39,6 +40,7 @@ if __name__ == '__main__':
         dim_input = settings["n_bits"]
         points_ds = ReactionSmilesDataset(path, dev, fp_method, params)
     elif config.problem == "mnist":
+        settings = None
         include_classes = None
         points, labels = load_mnist_some_classes(include_classes)
         dim_input = points.size(1)
@@ -55,7 +57,15 @@ if __name__ == '__main__':
     # Training and evaluating
     start = datetime.datetime.now()
 
-    fit_model(ffnn, points_ds, opt, **config.training_params, save_model_flag=config.save_flag)
+    report_config = json.dumps({"settings": settings,
+                                "optimization": config.optimization_conf,
+                                "training": config.training_params})
+    fit_model(ffnn,
+              points_ds,
+              opt,
+              **config.training_params,
+              save_model_flag=config.save_flag,
+              configuration_report=report_config)
 
     fin = datetime.datetime.now()
     print("Training time:", fin - start)
