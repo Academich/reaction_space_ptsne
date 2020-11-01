@@ -1,5 +1,4 @@
 from base64 import b64encode
-import json
 
 import holoviews as hv
 import numpy as np
@@ -9,25 +8,22 @@ from bokeh.plotting import figure, output_file, show
 
 from utils.descriptors import ecfp
 from utils.reactions import reaction_fps
+from config import config
 
 hv.extension('bokeh')
 
-with open("rend_config.json") as f:
-    config_all = json.load(f)
+mode = config.problem
+settings = config.problem_settings[mode]
 
-mode = config_all['mode']
-config = config_all[f"{mode}_rend_params"]
+dataset = f"../data/{settings['filename']}"
 
-dataset = f"../data/{config['dataset_name']}"
-model_filename = f"../model/{config['model_filename']}"
-
-print(config)
+MODEL_FILENAME = f"../model/rxn_dist_jaccard_per_30_bs_5000_epoch_10.pt"
 
 
 def main_html_render_molecule():
     dev = "cpu"
     # construct model and load weights
-    model = torch.load(model_filename, map_location='cpu')
+    model = torch.load(MODEL_FILENAME, map_location='cpu')
 
     with open(dataset, "r") as f:
         smiles = [line.split()[0] for line in f.readlines()]
@@ -68,7 +64,7 @@ def main_html_render_molecule():
 
 def main_html_render_reaction(**kwargs):
     # construct model and load weights
-    model = torch.load(model_filename, map_location='cpu')
+    model = torch.load(MODEL_FILENAME, map_location='cpu')
 
     with open(dataset, "r") as f:
         smarts = []
@@ -117,6 +113,14 @@ if __name__ == '__main__':
         main_html_render_molecule()
     elif mode == "reaction":
         print("reaction")
-        main_html_render_reaction(**config['params'])
+        params = {"fp_method": settings["fp_method"],
+                  "n_bits": settings["n_bits"],
+                  "fp_type": settings["fp_type"],
+                  "include_agents": settings["include_agents"],
+                  "agent_weight": settings["agent_weight"],
+                  "non_agent_weight": settings["non_agent_weight"],
+                  "bit_ratio_agents": settings["bit_ratio_agents"]
+                  }
+        main_html_render_reaction(**params)
     else:
         pass
