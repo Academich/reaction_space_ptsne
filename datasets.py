@@ -52,7 +52,7 @@ class ReactionSmilesDataset(Dataset):
 
     def __init__(self,
                  filepath: str,
-                 dev: str,
+                 dev: Any,
                  fp_method: str,
                  params: Dict[str, Any]) -> None:
         self.filepath = filepath  # path to .csv file
