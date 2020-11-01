@@ -1,9 +1,18 @@
+import random
+import string
 from math import log2
 from torch import tensor, eye, ones, device, isnan
 from torch import max as torch_max
 from config import config
 
 EPS = tensor([1e-10]).to(device(config.dev))
+
+
+def get_random_string(length: int) -> str:
+    "Generates random string of ascii chars"
+    letters = string.ascii_lowercase
+    result_str = ''.join(random.choice(letters) for _ in range(length))
+    return result_str
 
 
 def squared_euc_dists(x: tensor) -> tensor:
