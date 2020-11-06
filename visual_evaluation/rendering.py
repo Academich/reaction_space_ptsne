@@ -17,7 +17,7 @@ settings = config.problem_settings[mode]
 
 dataset = f"../data/{settings['filename']}"
 
-MODEL_FILENAME = f"../model/rxn_dist_jaccard_per_30_bs_5000_epoch_10.pt"
+MODEL_FILENAME = f"../model/hjtcki_epoch_40.pt"
 
 
 def main_html_render_molecule():
@@ -35,7 +35,7 @@ def main_html_render_molecule():
     s = ColumnDataSource(data=dict(x=res[:, 0], y=res[:, 1],
                                    smiles=["http://localhost:5000/render_molecule/{}.svg".format(
                                        b64encode(s.encode('ascii')).decode('ascii')) for s in smiles]))
-    output_file(f"htmls/{config['dataset_name']}.html", title=f"{config['dataset_name']}", mode="cdn")
+    output_file(f"htmls/{settings['filename']}.html", title=f"{settings['filename']}", mode="cdn")
 
     TOOLS = "box_zoom,reset"
     TOOLTIPS = """
@@ -80,7 +80,7 @@ def main_html_render_reaction(**kwargs):
     s = ColumnDataSource(data=dict(x=res[:, 0], y=res[:, 1],
                                    sm=["http://localhost:5000/render_reaction/{}.svg".format(
                                        b64encode(s.encode('ascii')).decode('ascii')) for s in smarts]))
-    output_file(f"htmls/{config['dataset_name']}.html", title=f"{config['dataset_name']}", mode="cdn")
+    output_file(f"htmls/{settings['filename']}.html", title=f"{settings['filename']}", mode="cdn")
 
     TOOLS = "box_zoom,reset"
     TOOLTIPS = """
@@ -108,10 +108,10 @@ def main_html_render_reaction(**kwargs):
 
 
 if __name__ == '__main__':
-    if mode == "molecule":
+    if mode == "molecules":
         print("molecule")
         main_html_render_molecule()
-    elif mode == "reaction":
+    elif mode == "reactions":
         print("reaction")
         params = {"fp_method": settings["fp_method"],
                   "n_bits": settings["n_bits"],
