@@ -26,7 +26,8 @@ def render_reaction(image):
     smarts = b64decode(image).decode('ascii')
     rxn = AllChem.ReactionFromSmarts(smarts, useSmiles=True)
     drawer = Draw.MolDraw2DSVG(900, 300)
-    drawer.DrawReaction(rxn)
+    colors = [(0.3, 0.7, 0.9), (0.9, 0.7, 0.9), (0.6, 0.9, 0.3), (0.9, 0.9, 0.1)]
+    drawer.DrawReaction(rxn, highlightByReactant=True, highlightColorsReactants=colors)
     drawer.FinishDrawing()
     svg = drawer.GetDrawingText().replace(':svg', '').replace('svg:', '')
     return send_file(BytesIO(svg.encode('ascii')), mimetype='image/svg+xml')
