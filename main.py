@@ -2,7 +2,7 @@ import json
 import torch
 from torch.utils.data import TensorDataset
 
-from datasets import ReactionSmilesDataset, SmilesDataset, load_mnist_some_classes
+from datasets import ReactionSmilesDataset, SmilesDataset, load_mnist_some_classes, ReactionSmartsTemplatesDataset
 from model.model import fit_model, NeuralMappingDeeper
 from visual_evaluation.plot_embeddings import plot_embs
 from config import config
@@ -39,6 +39,14 @@ if __name__ == '__main__':
                   }
         dim_input = settings["n_bits"]
         points_ds = ReactionSmilesDataset(path, dev, fp_method, params)
+    elif config.problem == "reaction_templates":
+        settings = config.problem_settings["reaction_templates"]
+        path = f"data/{settings['filename']}"
+        print(path)
+        points_ds = ReactionSmartsTemplatesDataset(path, dev, binary=settings["binary"])
+        dim_input = len(points_ds.alphabet)
+        print(dim_input)
+
     elif config.problem == "mnist":
         settings = None
         include_classes = None
