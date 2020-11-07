@@ -1,20 +1,34 @@
 device: "cuda"
-seed: 17
-save_model: 0
+seed: 50
+save_model: True
+problem: "reaction_templates"
 
-dataset:
-  name: "tox21"
-  n_bits: 4096
+problem_settings:
+  molecules:
+    filename: "taar1.smi"
+    n_bits: 4096
+  reactions:
+    filename: "templates_only.csv"
+    fp_method: "structural"
+    n_bits: 2048
+    fp_type: "MorganFP"
+    "include_agents": True
+    "agent_weight": 1
+    "non_agent_weight": 10
+    "bit_ratio_agents": 0.2
+  reaction_templates:
+    filename: "fine_templates_10000.csv"
+    binary: True
 
 optimization:
-  lr: 0.001
+  lr: 0.002
 
 training:
   perplexity: 30
-  n_epochs: 30
+  n_epochs: 10
   early_exaggeration: 0
   early_exaggeration_constant: 5
-  batch_size: 4000
+  batch_size: 1000
   bin_search_max_iter: 100
   bin_search_tol: 0.0001
   dist_func_name: "jaccard"
