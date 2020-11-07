@@ -79,3 +79,48 @@ class ReactionSmilesDataset(Dataset):
                                    **self.params)
 
         return torch.from_numpy(descriptors).float().to(self.dev), self.labels[idx]
+
+
+class ReactionSmartsTemplatesDataset(Dataset):
+    alphabet = ['(', '[', '#', '1', '7', ']', '-', 'S', ';', 'H', '0', '+', ':', '*', '2', ')', '=', '3', '4',
+                '.', '5', 'O', '6', '8', 'N', 'I', 'c', 'C', '9', 'l', 'n', 's', 'o', 'B', 'r', '@', 'F', '/',
+                'P', 'a', '\\', 'b', 'i', 'Z', 'V', 'K', 'L', 'M', 'g', 'A', 'u', 'e', 'T', 'R', 'h', 'U']
+    alphabet_dict = {char: i for i, char in enumerate(alphabet)}
+
+    def __init__(self, filepath: str, dev: Any, binary: bool):
+        self.filepath = filepath
+        self.dev = dev
+        self.binary = binary
+        self.smarts_templates = []
+        with open(self.filepath) as _file:
+            for i, line in enumerate(_file):
+                if i == 0:
+                    # skip header of csv
+                    continue
+                self.smarts_templates.append(line.split(",")[1].rstrip())
+
+        # trivial labels for now
+        self.labels = [0 for _ in self.smarts_templates]
+
+    def one_hot_encode(self, sm_temp):
+        x = torch.zeros(len(self.alphabet))
+        for char in sm_temp:
+            if self.binary:
+                x[self.alphabet_dict[char]] = 1.0
+            else:
+                x[self.alphabet_dict[char]] += 1.0
+        return x
+
+    def __len__(self):
+        return len(self.smarts_templates)
+
+    def __getitem__(self, idx):
+        rxn = self.smarts_templates[idx]
+        reags, prods = rxn.split(">>")
+        reags_ohe = self.one_hot_encode(reags)
+        prods_ohe = self.one_hot_encode(prods)
+        if self.binary:
+            res = torch.max(reags_ohe, prods_ohe)
+        else:
+            res = reags_ohe + prods_ohe
+        return res.to(self.dev), self.labels[idx]
