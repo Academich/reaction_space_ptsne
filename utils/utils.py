@@ -9,7 +9,7 @@ EPS = tensor([1e-10]).to(device(config.dev))
 
 
 def get_random_string(length: int) -> str:
-    "Generates random string of ascii chars"
+    """Generates random string of ascii chars"""
     letters = string.ascii_lowercase
     result_str = ''.join(random.choice(letters) for _ in range(length))
     return result_str
@@ -67,8 +67,9 @@ def calculate_optimized_p_cond(input_points: tensor,
     curr_iter = 0
     while not finished.all().item():
         if curr_iter >= max_iter:
-            print("Warning! Exceeded max iter. Discarding batch")
-            return
+            print("Warning! Exceeded max iter.")
+            # print("Discarding batch")
+            return p_cond
         pos_diff = (ent_diff > 0).float()
         neg_diff = (ent_diff <= 0).float()
 
