@@ -3,7 +3,7 @@ import torch
 from torch.utils.data import TensorDataset
 
 from datasets import ReactionSmilesDataset, SmilesDataset, load_mnist_some_classes, ReactionSmartsTemplatesDataset
-from model.model import fit_model, NeuralMappingDeeper
+from model.model import fit_model, NeuralMapper
 from visual_evaluation.plot_embeddings import plot_embs
 from config import config
 
@@ -57,7 +57,7 @@ if __name__ == '__main__':
     else:
         raise ValueError(f"Unknown problem type: {config.problem}")
 
-    net = NeuralMappingDeeper
+    net = NeuralMapper
     ffnn = net(dim_input=dim_input).to(dev)
     untrained_ref_ffnn = net(dim_input=dim_input).to(dev)
     opt = torch.optim.Adam(ffnn.parameters(), **config.optimization_conf)
@@ -78,4 +78,4 @@ if __name__ == '__main__':
     fin = datetime.datetime.now()
     print("Training time:", fin - start)
 
-    plot_embs(ffnn, untrained_ref_ffnn, points_ds)
+    # plot_embs(ffnn, untrained_ref_ffnn, points_ds)
