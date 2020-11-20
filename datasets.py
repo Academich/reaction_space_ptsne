@@ -11,7 +11,7 @@ from utils.reactions import reaction_fps
 
 
 def load_mnist_some_classes(include_labels: Optional[Tuple] = None, n_rows: int = None) -> np.array:
-    with gzip.open('data/mnist.pkl.gz', 'rb') as f:
+    with gzip.open('data/mnist/mnist.pkl.gz', 'rb') as f:
         train_set, _, _ = pickle.load(f, encoding='latin1')
     train_data, train_labels = train_set
     if include_labels is None:
@@ -58,17 +58,18 @@ class ReactionSmilesDataset(Dataset):
         self.filepath = filepath  # path to .csv file
         self.dev = dev
         self.smiles = []
+        self.labels = []
         self.fp_method = fp_method
         self.params = params
         with open(self.filepath) as _file:
-            for i, smi in enumerate(_file):
-                if i == 0:
-                    # skip header of csv
-                    continue
-                self.smiles.append(smi.replace(",", ">").rstrip("\n"))
-
-        # trivial labels for now
-        self.labels = [0 for _ in self.smiles]
+            for i, line in enumerate(_file):
+                try:
+                    smi, label = line.split(";")
+                except ValueError:
+                    smi = line
+                    label = 0
+                self.smiles.append(smi.strip())
+                self.labels.append(int(label))
 
     def __len__(self):
         return len(self.smiles)
@@ -84,7 +85,8 @@ class ReactionSmilesDataset(Dataset):
 class ReactionSmartsTemplatesDataset(Dataset):
     alphabet = ['(', '[', '#', '1', '7', ']', '-', 'S', ';', 'H', '0', '+', ':', '*', '2', ')', '=', '3', '4',
                 '.', '5', 'O', '6', '8', 'N', 'I', 'c', 'C', '9', 'l', 'n', 's', 'o', 'B', 'r', '@', 'F', '/',
-                'P', 'a', '\\', 'b', 'i', 'Z', 'V', 'K', 'L', 'M', 'g', 'A', 'u', 'e', 'T', 'R', 'h', 'U']
+                'P', 'a', '\\', 'b', 'i', 'Z', 'V', 'K', 'L', 'M', 'g', 'A', 'u', 'e', 'T', 'R', 'h', 'U', 'p', 'd',
+                'G', 't']
     alphabet_dict = {char: i for i, char in enumerate(alphabet)}
 
     def __init__(self, filepath: str, dev: Any, binary: bool):
@@ -94,10 +96,7 @@ class ReactionSmartsTemplatesDataset(Dataset):
         self.smarts_templates = []
         with open(self.filepath) as _file:
             for i, line in enumerate(_file):
-                if i == 0:
-                    # skip header of csv
-                    continue
-                self.smarts_templates.append(line.split(",")[1].rstrip())
+                self.smarts_templates.append(line.strip())
 
         # trivial labels for now
         self.labels = [0 for _ in self.smarts_templates]
@@ -105,10 +104,13 @@ class ReactionSmartsTemplatesDataset(Dataset):
     def one_hot_encode(self, sm_temp):
         x = torch.zeros(len(self.alphabet))
         for char in sm_temp:
-            if self.binary:
-                x[self.alphabet_dict[char]] = 1.0
-            else:
-                x[self.alphabet_dict[char]] += 1.0
+            try:
+                if self.binary:
+                    x[self.alphabet_dict[char]] = 1.0
+                else:
+                    x[self.alphabet_dict[char]] += 1.0
+            except KeyError:
+                continue
         return x
 
     def __len__(self):
