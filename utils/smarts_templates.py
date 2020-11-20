@@ -372,10 +372,10 @@ def get_fragments_for_changed_atoms(mols, changed_atom_tags, radius=0,
 
 
 def expand_changed_atom_tags(changed_atom_tags, reactant_fragments):
-    '''Given a list of changed atom tags (numbers as strings) and a string consisting
+    """Given a list of changed atom tags (numbers as strings) and a string consisting
     of the reactant_fragments to include in the reaction transform, this function
     adds any tagged atoms found in the reactant side of the template to the
-    changed_atom_tags list so that those tagged atoms are included in the products'''
+    changed_atom_tags list so that those tagged atoms are included in the products"""
 
     expansion = []
     atom_tags_in_reactant_fragments = re.findall('\:([[0-9]+)\]', reactant_fragments)
@@ -387,10 +387,10 @@ def expand_changed_atom_tags(changed_atom_tags, reactant_fragments):
 
 
 def get_special_groups(mol):
-    '''Given an RDKit molecule, this function returns a list of tuples, where
+    """Given an RDKit molecule, this function returns a list of tuples, where
     each tuple contains the AtomIdx's for a special group of atoms which should
     be included in a fragment all together. This should only be done for the
-    reactants, otherwise the products might end up with mapping mismatches'''
+    reactants, otherwise the products might end up with mapping mismatches"""
 
     if SUPER_GENERAL_TEMPLATES:
         return []
@@ -518,7 +518,7 @@ def convert_to_retro(transform):
     return '>>'.join([products, reactants])
 
 
-def main(file, N=15):
+def main(file, writing_path, N=15):
     """Read reactions"""
     global v
 
@@ -753,7 +753,7 @@ def main(file, N=15):
         print('Stopped early!')
 
     header = "index,rxn,template,report"
-    with open("templates.csv", "w") as here:
+    with open(writing_path, "w") as here:
         here.write(header + all_rxn_strings)
 
     total_examples = i + 1
@@ -780,22 +780,10 @@ def main(file, N=15):
 
 
 if __name__ == '__main__':
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument('-v', type=bool, default=False,
-    #                     help='Verbose printing (incl. saving images); defaults to False')
-    # parser.add_argument('-o', '--out', type=str, default='',
-    #                     help='Folder to output images to if verbose')
-    # parser.add_argument('-n', '--num', type=int, default=50,
-    #                     help='Maximum number of records to examine; defaults to 50')
-    # parser.add_argument('-g', '--general', type=str, default='y',
-    #                     help='Use incredibly general templates; defaults to y\n' +
-    #                          'Only appropriate for forward enumeration')
-    # parser.add_argument('-t', '--test', type=str, default='y',
-    #                     help='Whether to *skip* testing; defaults to y')
-    # parser.add_argument('--create_mass', type=str, default='y',
-    #                     help='Whether to allow reactions to product mass, defaults y')
-    # args = parser.parse_args()
-
+    # Verbosity
     v = False
-    with open("../data/uspto-labeled.csv") as f:
-        main(f, N=-1)
+
+    read_from = "../data/whole_sanitized_us_patents.csv"
+    write_to = "../data/templates_whole_sanitized_us_patents.csv"
+    with open(read_from) as f:
+        main(f, write_to, N=-1)
