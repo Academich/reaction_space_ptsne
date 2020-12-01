@@ -1,9 +1,12 @@
+import datetime
+import json
+
 import torch
 from torch import nn, Tensor
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, Dataset
 
-from utils import EPS, get_q_joint, calculate_optimized_p_cond, make_joint
+from utils.utils import EPS, get_q_joint, calculate_optimized_p_cond, make_joint, get_random_string
 
 
 def loss_function(p_joint: Tensor, q_joint: Tensor) -> Tensor:
@@ -30,7 +33,9 @@ def fit_model(model: nn.Module,
               bin_search_tol: float,
               bin_search_max_iter: int,
               min_allowed_sig_sq: float,
-              max_allowed_sig_sq: float
+              max_allowed_sig_sq: float,
+              save_model_flag: bool,
+              configuration_report: str
               ) -> None:
     """
     Fits t-SNE model
@@ -49,15 +54,19 @@ def fit_model(model: nn.Module,
     :param bin_search_max_iter: Number of max iterations for binary search
     :param min_allowed_sig_sq: Minimal allowed value for squared sigmas
     :param max_allowed_sig_sq: Maximal allowed value for squared sigmas
+    :param save_model_flag: A flag whather to save model or not
+    :param configuration_report: Config of the model in string form for report purposes
     :return:
     """
     model.train()
     n_points = len(input_points)
     train_dl = DataLoader(input_points, batch_size=batch_size, shuffle=True)
+    model_name = get_random_string(6)
     for epoch in range(n_epochs):
+        epoch_start_time = datetime.datetime.now()
         train_loss = 0
         for list_with_batch in train_dl:
-            orig_points_batch, _ = list_with_batch  # because it is a list of len 1
+            orig_points_batch, _ = list_with_batch
             with torch.no_grad():
                 p_cond_in_batch = calculate_optimized_p_cond(orig_points_batch,
                                                              perplexity,
@@ -66,10 +75,12 @@ def fit_model(model: nn.Module,
                                                              bin_search_max_iter,
                                                              min_allowed_sig_sq,
                                                              max_allowed_sig_sq)
+                if p_cond_in_batch is None:
+                    continue
                 p_joint_in_batch = make_joint(p_cond_in_batch)
             opt.zero_grad()
             embeddings = model(orig_points_batch)
-            q_joint_in_batch = get_q_joint(embeddings, dist_func_name, alpha=1)
+            q_joint_in_batch = get_q_joint(embeddings, "euc", alpha=1)
             if early_exaggeration:
                 p_joint_in_batch *= early_exaggeration_constant
                 early_exaggeration -= 1
@@ -77,7 +88,15 @@ def fit_model(model: nn.Module,
             train_loss += loss.item()
             loss.backward()
             opt.step()
-        print(f'====> Epoch: {epoch + 1} Average loss: {train_loss / n_points:.4f}')
+        epoch_end_time = datetime.datetime.now()
+        time_elapsed = epoch_end_time - epoch_start_time
+        if save_model_flag and (epoch + 1) % 5 == 0:
+            save_path = "model/" + f"{model_name}_epoch_{epoch + 1}"
+            torch.save(model, save_path + ".pt")
+            with open(save_path + ".json", "w") as here:
+                json.dump(json.loads(configuration_report), here)
+            print('Model saved as %s' % save_path)
+        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {train_loss / n_points:.4f}')
 
 
 def get_batch_embeddings(model: nn.Module,
@@ -108,17 +127,27 @@ def weights_init(m: nn.Module) -> None:
         m.bias.data.fill_(0)
 
 
-class NeuralMapping(nn.Module):
+class NeuralMapper(nn.Module):
 
     def __init__(self, dim_input, dim_emb=2):
         super().__init__()
         self.linear_1 = nn.Linear(dim_input, dim_input)
         self.bn_1 = nn.BatchNorm1d(dim_input)
-        self.linear_2 = nn.Linear(dim_input, dim_emb)
+        self.linear_2 = nn.Linear(dim_input, dim_input)
+        self.bn_2 = nn.BatchNorm1d(dim_input)
+        self.linear_3 = nn.Linear(dim_input, dim_input)
+        self.bn_3 = nn.BatchNorm1d(dim_input)
+        self.linear_4 = nn.Linear(dim_input, dim_emb)
         self.relu = nn.ReLU()
 
         self.apply(weights_init)
 
     def forward(self, x):
-        x = self.relu(self.bn_1(self.linear_1(x)))
-        return self.linear_2(x)
+        x = self.linear_1(x)
+        x = self.bn_1(x)
+        x = self.linear_2(self.relu(x))
+        x = self.bn_2(x)
+        x = self.linear_3(self.relu(x))
+        x = self.bn_3(x)
+        x = self.linear_4(self.relu(x))
+        return x
