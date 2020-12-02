@@ -94,7 +94,7 @@ def fit_model(model: nn.Module,
         epoch_end_time = datetime.datetime.now()
         time_elapsed = epoch_end_time - epoch_start_time
 
-        save_path = "model/" + f"{model_name}_epoch_{epoch + 1}"
+        save_path = "saved_models/" + f"{model_name}_epoch_{epoch + 1}"
         if save_model_flag and (epoch + 1) % 5 == 0:
             torch.save(model, save_path + ".pt")
             with open(save_path + ".json", "w") as here:
