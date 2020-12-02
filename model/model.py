@@ -5,6 +5,8 @@ import torch
 from torch import nn, Tensor
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, Dataset
+from numpy import array
+from numpy import save as np_save
 
 from utils.utils import EPS, get_q_joint, calculate_optimized_p_cond, make_joint, get_random_string
 
@@ -62,6 +64,7 @@ def fit_model(model: nn.Module,
     n_points = len(input_points)
     train_dl = DataLoader(input_points, batch_size=batch_size, shuffle=True)
     model_name = get_random_string(6)
+    epoch_losses = []
     for epoch in range(n_epochs):
         epoch_start_time = datetime.datetime.now()
         train_loss = 0
@@ -90,13 +93,21 @@ def fit_model(model: nn.Module,
             opt.step()
         epoch_end_time = datetime.datetime.now()
         time_elapsed = epoch_end_time - epoch_start_time
+
+        save_path = "model/" + f"{model_name}_epoch_{epoch + 1}"
         if save_model_flag and (epoch + 1) % 5 == 0:
-            save_path = "model/" + f"{model_name}_epoch_{epoch + 1}"
             torch.save(model, save_path + ".pt")
             with open(save_path + ".json", "w") as here:
                 json.dump(json.loads(configuration_report), here)
             print('Model saved as %s' % save_path)
-        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {train_loss / n_points:.4f}')
+        average_loss = train_loss / n_points
+        epoch_losses.append(average_loss)
+        if save_model_flag and epoch == n_epochs - 1:
+            epoch_losses = array(epoch_losses)
+            loss_save_path = save_path + "_loss.npy"
+            np_save(loss_save_path, epoch_losses)
+            print("Loss history saved in", loss_save_path)
+        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {average_loss:.4f}')
 
 
 def get_batch_embeddings(model: nn.Module,
