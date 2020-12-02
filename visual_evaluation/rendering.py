@@ -1,24 +1,36 @@
+import argparse
+import json
+import pickle
 from base64 import b64encode
 
 import holoviews as hv
 import numpy as np
 import torch
-from bokeh.models import ColumnDataSource
+from bokeh.models import ColumnDataSource, CategoricalColorMapper
 from bokeh.plotting import figure, output_file, show
+from bokeh.palettes import d3
 
 from utils.descriptors import ecfp
 from utils.reactions import reaction_fps
-from datasets import ReactionSmartsTemplatesDataset
-from config import config
+from datasets import ReactionSmartsTemplatesDataset, ReactionSmilesDataset
 
 hv.extension('bokeh')
 
-mode = config.problem
-settings = config.problem_settings[mode]
+parser = argparse.ArgumentParser()
+parser.add_argument('--problem', '-p',
+                    help='type of problem: mnist, reactions, reaction_templates, molecules')
+parser.add_argument('--dataset', '-d', help='path to dataset')
+parser.add_argument('--model', '-m', help='name of a saved model')
+args = parser.parse_args()
 
-dataset = f"../data/{settings['filename']}"
-
-MODEL_FILENAME = f"../model/zauoes_epoch_10.pt"
+dataset = args.dataset
+MODEL_FILENAME = args.model
+mode = args.problem
+with open(args.model.replace(".pt", ".json")) as f:
+    settings = json.load(f)["settings"]
+if mode == "reactions":
+    with open("data/visual_validation/rxnClasses.pickle", "rb") as f:
+        classes = pickle.load(f)
 
 
 def main_html_render_molecule():
@@ -68,19 +80,31 @@ def main_html_render_reaction(**kwargs):
     model = torch.load(MODEL_FILENAME, map_location='cpu')
 
     with open(dataset, "r") as f:
-        smarts = []
+        smiles = []
+        labels = []
         for i, line in enumerate(f.readlines()):
-            if i == 0:
-                continue
-            smarts.append(line.replace(",", ">").rstrip("\n"))
-    fps = np.array([reaction_fps(s, **kwargs) for s in smarts])
+            try:
+                smi, lab = line.split(';')
+            except ValueError:
+                smi = line.strip()
+                lab = 0
+            smiles.append(smi)
+            labels.append(lab)
+    fps = np.array([reaction_fps(s, **kwargs) for s in smiles])
     input = torch.from_numpy(fps).float()
     out = model(input)
     res = out.detach().cpu().numpy()
 
-    s = ColumnDataSource(data=dict(x=res[:, 0], y=res[:, 1],
+    s = ColumnDataSource(data=dict(x=res[:, 0],
+                                   y=res[:, 1],
+                                   reaction_class=[classes[i] for i in labels],
                                    sm=["http://localhost:5000/render_reaction/{}.svg".format(
-                                       b64encode(s.encode('ascii')).decode('ascii')) for s in smarts]))
+                                       b64encode(s.encode('ascii')).decode('ascii')) for s in smiles]))
+
+    palette = d3['Category10'][len(classes)]
+    color_map = CategoricalColorMapper(factors=classes,
+                                       palette=palette)
+
     output_file(f"htmls/{settings['filename']}.html", title=f"{settings['filename']}", mode="cdn")
 
     TOOLS = "box_zoom,reset"
@@ -103,7 +127,9 @@ def main_html_render_reaction(**kwargs):
     p.ygrid.grid_line_color = None
     p.axis.visible = False
     # add a circle renderer with vectorized colors and sizes
-    p.circle('x', 'y', source=s, fill_alpha=0.6, line_color=None)
+    p.circle('x', 'y', source=s, fill_alpha=0.6, color={'field': 'reaction_class',
+                                                        'transform': color_map},
+             legend='reaction_class')
     # show the results
     show(p)
 
