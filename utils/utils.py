@@ -67,7 +67,7 @@ def calculate_optimized_p_cond(input_points: tensor,
     curr_iter = 0
     while not finished.all().item():
         if curr_iter >= max_iter:
-            print("Warning! Exceeded max iter.")
+            print("Warning! Exceeded max iter.", flush=True)
             # print("Discarding batch")
             return p_cond
         pos_diff = (ent_diff > 0).float()
@@ -82,7 +82,7 @@ def calculate_optimized_p_cond(input_points: tensor,
         finished = ent_diff.abs() < tol
         curr_iter += 1
     if isnan(ent_diff.max()):
-        print("Warning! Entropy is nan. Discarding batch")
+        print("Warning! Entropy is nan. Discarding batch", flush=True)
         return
     return p_cond
 

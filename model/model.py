@@ -95,8 +95,8 @@ def fit_model(model: nn.Module,
             torch.save(model, save_path + ".pt")
             with open(save_path + ".json", "w") as here:
                 json.dump(json.loads(configuration_report), here)
-            print('Model saved as %s' % save_path)
-        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {train_loss / n_points:.4f}')
+            print('Model saved as %s' % save_path, flush=True)
+        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {train_loss / n_points:.4f}', flush=True)
 
 
 def get_batch_embeddings(model: nn.Module,

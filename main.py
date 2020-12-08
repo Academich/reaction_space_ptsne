@@ -15,8 +15,8 @@ if __name__ == '__main__':
     if config.seed:
         torch.manual_seed(config.seed)
     dev = torch.device(config.dev)
-    print(dev)
-    print(config.problem)
+    print(dev, flush=True)
+    print(config.problem, flush=True)
 
     if config.problem == "molecules":
         settings = config.problem_settings["molecules"]
@@ -24,11 +24,11 @@ if __name__ == '__main__':
         dataset_name = f"data/{settings['filename']}"
         points_ds = SmilesDataset(dataset_name, dev, n_bits=n_bits)
         dim_input = n_bits
-        print(dataset_name)
+        print(dataset_name, flush=True)
     elif config.problem == "reactions":
         settings = config.problem_settings["reactions"]
         path = f"data/{settings['filename']}"
-        print(path)
+        print(path, flush=True)
         fp_method = settings["fp_method"]
         params = {"n_bits": settings["n_bits"],
                   "fp_type": settings["fp_type"],
@@ -42,10 +42,10 @@ if __name__ == '__main__':
     elif config.problem == "reaction_templates":
         settings = config.problem_settings["reaction_templates"]
         path = f"data/{settings['filename']}"
-        print(path)
+        print(path, flush=True)
         points_ds = ReactionSmartsTemplatesDataset(path, dev, binary=settings["binary"])
         dim_input = len(points_ds.alphabet)
-        print(dim_input)
+        print(dim_input, flush=True)
 
     elif config.problem == "mnist":
         settings = None
@@ -76,6 +76,6 @@ if __name__ == '__main__':
               configuration_report=report_config)
 
     fin = datetime.datetime.now()
-    print("Training time:", fin - start)
+    print("Training time:", fin - start, flush=True)
 
     # plot_embs(ffnn, untrained_ref_ffnn, points_ds)
