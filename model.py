@@ -99,15 +99,15 @@ def fit_model(model: nn.Module,
             torch.save(model, save_path + ".pt")
             with open(save_path + ".json", "w") as here:
                 json.dump(json.loads(configuration_report), here)
-            print('Model saved as %s' % save_path)
+            print('Model saved as %s' % save_path, flush=True)
         average_loss = train_loss / n_points
         epoch_losses.append(average_loss)
         if save_model_flag and epoch == n_epochs - 1:
             epoch_losses = array(epoch_losses)
             loss_save_path = save_path + "_loss.npy"
             np_save(loss_save_path, epoch_losses)
-            print("Loss history saved in", loss_save_path)
-        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {average_loss:.4f}')
+            print("Loss history saved in", loss_save_path, flush=True)
+        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {average_loss:.4f}', flush=True)
 
 
 def get_batch_embeddings(model: nn.Module,
