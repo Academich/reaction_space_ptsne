@@ -12,7 +12,7 @@ from bokeh.palettes import d3
 
 from utils.descriptors import ecfp
 from utils.reactions import reaction_fps
-from datasets import ReactionSmartsTemplatesDataset, ReactionSmilesDataset
+from datasets import ReactionSmartsTemplatesDataset
 
 hv.extension('bokeh')
 
@@ -20,7 +20,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--problem', '-p',
                     help='type of problem: mnist, reactions, reaction_templates, molecules')
 parser.add_argument('--dataset', '-d', help='path to dataset')
-parser.add_argument('--model', '-m', help='name of a saved model')
+parser.add_argument('--model', '-m', help='path to saved model')
+parser.add_argument('--output', '-o', help='path to output html file')
 args = parser.parse_args()
 
 dataset = args.dataset
@@ -31,6 +32,7 @@ with open(args.model.replace(".pt", ".json")) as f:
 if mode == "reactions":
     with open("data/visual_validation/rxnClasses.pickle", "rb") as f:
         classes = pickle.load(f)
+output_filename = args.output
 
 
 def main_html_render_molecule():
@@ -85,6 +87,7 @@ def main_html_render_reaction(**kwargs):
         for i, line in enumerate(f.readlines()):
             try:
                 smi, lab = line.split(';')
+                lab = lab.strip()
             except ValueError:
                 smi = line.strip()
                 lab = 0
@@ -95,17 +98,19 @@ def main_html_render_reaction(**kwargs):
     out = model(input)
     res = out.detach().cpu().numpy()
 
-    s = ColumnDataSource(data=dict(x=res[:, 0],
-                                   y=res[:, 1],
-                                   reaction_class=[classes[i] for i in labels],
-                                   sm=["http://localhost:5000/render_reaction/{}.svg".format(
-                                       b64encode(s.encode('ascii')).decode('ascii')) for s in smiles]))
+    data_dict = {"x": res[:, 0],
+                 "y": res[:, 1],
+                 "sm": [
+                     "http://localhost:5000/render_reaction/{}.svg".format(b64encode(s.encode('ascii')).decode('ascii'))
+                     for s in smiles]}
+    if len(set(labels)) > 1:
+        reaction_classes = [classes[i] for i in labels]
+        data_dict["reaction_class"] = reaction_classes
+    else:
+        reaction_classes = None
+    s = ColumnDataSource(data=data_dict)
 
-    palette = d3['Category10'][len(classes)]
-    color_map = CategoricalColorMapper(factors=classes,
-                                       palette=palette)
-
-    output_file(f"htmls/{settings['filename']}.html", title=f"{settings['filename']}", mode="cdn")
+    output_file(output_filename, title=f"{settings['filename']}", mode="cdn")
 
     TOOLS = "box_zoom,reset"
     TOOLTIPS = """
@@ -127,9 +132,20 @@ def main_html_render_reaction(**kwargs):
     p.ygrid.grid_line_color = None
     p.axis.visible = False
     # add a circle renderer with vectorized colors and sizes
-    p.circle('x', 'y', source=s, fill_alpha=0.6, color={'field': 'reaction_class',
-                                                        'transform': color_map},
-             legend='reaction_class')
+    if reaction_classes is not None:
+        palette = d3['Category10'][len(classes)]
+        color_map = CategoricalColorMapper(factors=[v for v in classes.values()],
+                                           palette=palette)
+        color_transform = {'field': 'reaction_class',
+                           'transform': color_map}
+        p.circle('x', 'y', source=s,
+                 fill_alpha=1,
+                 fill_color=color_transform,
+                 line_color=color_transform,
+                 legend='reaction_class')
+    else:
+        p.circle('x', 'y', source=s,
+                 fill_alpha=0.6)
     # show the results
     show(p)
 

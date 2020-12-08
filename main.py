@@ -3,8 +3,7 @@ import torch
 from torch.utils.data import TensorDataset
 
 from datasets import ReactionSmilesDataset, SmilesDataset, load_mnist_some_classes, ReactionSmartsTemplatesDataset
-from model.model import fit_model, NeuralMapper
-from visual_evaluation.plot_embeddings import plot_embs
+from model import fit_model, NeuralMapper
 from config import config
 
 import datetime

@@ -8,7 +8,7 @@ from torch.nn import Module
 from torch.utils.data import Dataset
 from numpy import stack as np_stack
 
-from model.model import get_batch_embeddings
+from model import get_batch_embeddings
 from config import config
 from utils.reactions import reaction_fps
 
