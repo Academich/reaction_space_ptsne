@@ -6,6 +6,7 @@ from base64 import b64encode
 import holoviews as hv
 import numpy as np
 import torch
+import pandas as pd
 from bokeh.models import ColumnDataSource, CategoricalColorMapper
 from bokeh.plotting import figure, output_file, show
 from bokeh.palettes import d3
@@ -22,6 +23,8 @@ parser.add_argument('--problem', '-p',
 parser.add_argument('--dataset', '-d', help='path to dataset')
 parser.add_argument('--model', '-m', help='path to saved model')
 parser.add_argument('--output', '-o', help='path to output html file')
+parser.add_argument('--classes', '-c', help='labels of classes to render for reactions; example: 0,1,2,3',
+                    default='1,2,3,4,5,6,7,8,9,10')
 args = parser.parse_args()
 
 dataset = args.dataset
@@ -97,7 +100,7 @@ def main_html_render_reaction(**kwargs):
     input = torch.from_numpy(fps).float()
     out = model(input)
     res = out.detach().cpu().numpy()
-
+    classes_to_render = {classes[i] for i in args.classes.split(',')}
     data_dict = {"x": res[:, 0],
                  "y": res[:, 1],
                  "sm": [
@@ -106,9 +109,12 @@ def main_html_render_reaction(**kwargs):
     if len(set(labels)) > 1:
         reaction_classes = [classes[i] for i in labels]
         data_dict["reaction_class"] = reaction_classes
+        data_ds = pd.DataFrame.from_dict(data_dict)
+        data_ds = data_ds[data_ds["reaction_class"].isin(classes_to_render)]
+        s = ColumnDataSource(data_ds)
     else:
         reaction_classes = None
-    s = ColumnDataSource(data=data_dict)
+        s = ColumnDataSource(data=data_dict)
 
     output_file(output_filename, title=f"{settings['filename']}", mode="cdn")
 
@@ -117,7 +123,7 @@ def main_html_render_reaction(**kwargs):
         <div>
             <div>
                 <img
-                    src="@sm" alt="@sm" height="100" width="300"
+                    src="@sm" alt="@sm" height="300" width="900"
                     style="float: left; margin: 0px 15px 15px 0px;"
                     border="1"
             >
@@ -127,7 +133,9 @@ def main_html_render_reaction(**kwargs):
     # create a new plot with the tools above, and explicit ranges
     p = figure(tooltips=TOOLTIPS, tools=TOOLS,
                x_range=(res[:, 0].min() - res[:, 0].std(), res[:, 0].max() + res[:, 0].std()),
-               y_range=(res[:, 1].min() - res[:, 1].std(), res[:, 1].max() + res[:, 1].std()))
+               y_range=(res[:, 1].min() - res[:, 1].std(), res[:, 1].max() + res[:, 1].std()),
+               plot_width=1800,
+               plot_height=900)
     p.xgrid.grid_line_color = None
     p.ygrid.grid_line_color = None
     p.axis.visible = False
