@@ -38,32 +38,46 @@ def get_arguments_for_classifiers(val_ds_path, model_path, model_config_path):
     with no_grad():
         embs = model(points)
     embs = embs.detach().numpy()
-    return points, embs, labels
+    return embs, labels
 
 
-def get_grid(data):
-    x_min, x_max = data[:, 0].min() - 1, data[:, 0].max() + 1
-    y_min, y_max = data[:, 1].min() - 1, data[:, 1].max() + 1
-    return np.meshgrid(np.arange(x_min, x_max, 0.01), np.arange(y_min, y_max, 0.01))
-
-
-def fit_lgbm(train_orig, train_embs, train_labels):
-    clf = LGBMClassifier()
+def fit_lgbm_on_embs(train_embs, train_labels):
+    clf = LGBMClassifier(n_jobs=4, random_state=50)
     clf.fit(train_embs, train_labels)
-    xx, yy = get_grid(train_embs)
-    predicted = clf.predict(np.c_[xx.ravel(), yy.ravel()]).reshape(xx.shape)
-    plt.pcolormesh(xx, yy, predicted)
-    plt.figure(figsize=(20, 18))
-    plt.scatter(train_embs[:, 0], train_embs[:, 1],
-                c=train_labels, s=2, alpha=0.9,
-                edgecolors='black', linewidth=1.5)
-    plt.show()
+    predicted = clf.predict(train_embs)
+    return np.mean(predicted == train_labels)
+    # fig, ax = plt.subplots(nrows=2, ncols=1, figsize=(15, 12))
+    #
+    # for i in range(1, 10 + 1):
+    #     subset_true = train_embs[(train_labels == i).nonzero()]
+    #     subset_pred = train_embs[(predicted == i).nonzero()]
+    #     rxn_label = i
+    #     ax[0].scatter(subset_pred[:, 0], subset_pred[:, 1], label=rxn_label, s=5)
+    #     ax[1].scatter(subset_true[:, 0], subset_true[:, 1], label=rxn_label, s=5)
+    # plt.legend(markerscale=3)
+    # plt.show()
 
 
 if __name__ == '__main__':
-    val_path = "../data/validation_b.csv"
-    flnm = "morg30_agents_epoch_10"
-    trained_model_path = f"../model/{flnm}.pt"
-    trained_model_config_path = f"../model/{flnm}.json"
-    X, X_emb, Y = get_arguments_for_classifiers(val_path, trained_model_path, trained_model_config_path)
-    fit_lgbm(X, X_emb, Y)
+    val_path = "data/visual_validation/validation_b.csv"
+    names = ["morg10_epoch_10", "morg30_epoch_10", "morg100_epoch_10", "morg500_epoch_10",
+             "pair10_epoch_10", "pair30_epoch_10", "pair100_epoch_10", "pair500_epoch_10",
+             "toto30_epoch_10",
+             "morg30_epoch_40"]
+    for flnm in names:
+        trained_model_path = f"saved_models/{flnm}.pt"
+        trained_model_config_path = f"saved_models/{flnm}.json"
+        X_emb, Y = get_arguments_for_classifiers(val_path, trained_model_path, trained_model_config_path)
+        score = fit_lgbm_on_embs(X_emb, Y)
+        print(f"{flnm}: {score}")
+
+        # morg10_epoch_10: 0.83668
+        # morg30_epoch_10: 0.83638
+        # morg100_epoch_10: 0.83596
+        # morg500_epoch_10: 0.81924
+        # pair10_epoch_10: 0.73018
+        # pair30_epoch_10: 0.75314
+        # pair100_epoch_10: 0.68988
+        # pair500_epoch_10: 0.7264
+        # toto30_epoch_10: 0.75048
+        # morg30_epoch_40: 0.85916
