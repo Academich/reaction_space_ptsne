@@ -1,4 +1,7 @@
 import json
+import datetime
+import argparse
+
 import torch
 from torch.utils.data import TensorDataset
 
@@ -6,7 +9,15 @@ from datasets import ReactionSmilesDataset, SmilesDataset, load_mnist_some_class
 from model import fit_model, NeuralMapper
 from config import config
 
-import datetime
+parser = argparse.ArgumentParser()
+parser.add_argument('--perplexity', '-p', type=int, default=None,
+                    help='perplexity to use instead of one in the config')
+parser.add_argument('--epochs', '-e', type=int, default=None,
+                    help='perplexity to use instead of one in the config')
+parser.add_argument('--batchsize', '-b', type=int, default=None,
+                    help='batch size to use instead of one in the config')
+
+args = parser.parse_args()
 
 if __name__ == '__main__':
 
@@ -64,6 +75,13 @@ if __name__ == '__main__':
     # Training and evaluating
     start = datetime.datetime.now()
 
+    if args.perplexity is not None:
+        config.training_params["perplexity"] = args.perplexity
+    if args.epochs is not None:
+        config.training_params["n_epochs"] = args.epochs
+    if args.batchsize is not None:
+        config.training_params["batch_size"] = args.batchsize
+
     report_config = json.dumps({"settings": settings,
                                 "optimization": config.optimization_conf,
                                 "training": config.training_params})
@@ -77,4 +95,5 @@ if __name__ == '__main__':
     fin = datetime.datetime.now()
     print("Training time:", fin - start, flush=True)
 
-    # plot_embs(ffnn, untrained_ref_ffnn, points_ds)
+    from visual_evaluation.plot_embeddings import plot_embs
+    plot_embs(ffnn, untrained_ref_ffnn, points_ds)
