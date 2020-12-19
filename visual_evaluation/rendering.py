@@ -25,6 +25,7 @@ parser.add_argument('--model', '-m', help='path to saved model')
 parser.add_argument('--output', '-o', help='path to output html file')
 parser.add_argument('--classes', '-c', help='labels of classes to render for reactions; example: 0,1,2,3',
                     default='1,2,3,4,5,6,7,8,9,10')
+parser.add_argument('--additional', '-a', help='path to additional file with reaction smiles', default=None)
 args = parser.parse_args()
 
 dataset = args.dataset
@@ -83,6 +84,7 @@ def main_html_render_molecule():
 def main_html_render_reaction(**kwargs):
     # construct model and load weights
     model = torch.load(MODEL_FILENAME, map_location='cpu')
+    model.eval()
 
     with open(dataset, "r") as f:
         smiles = []
@@ -101,11 +103,31 @@ def main_html_render_reaction(**kwargs):
     out = model(input)
     res = out.detach().cpu().numpy()
     classes_to_render = {classes[i] for i in args.classes.split(',')}
+
+    if args.additional is not None:
+        with open(args.additional, 'r') as af:
+            addit_smiles = [line.strip() for line in af.readlines()]
+            addit_labels = ["11" for i in addit_smiles]
+        fps_addit = np.array([reaction_fps(s, **kwargs) for s in addit_smiles])
+        input_addit = torch.from_numpy(fps_addit).float()
+        out_addit = model(input_addit)
+        res_addit = out_addit.detach().cpu().numpy()
+        classes_to_render.add("Additional")
+        classes["11"] = "Additional"
+        res = np.vstack((res, res_addit))
+        smiles += addit_smiles
+        labels += addit_labels
+
     data_dict = {"x": res[:, 0],
                  "y": res[:, 1],
                  "sm": [
                      "http://localhost:5000/render_reaction/{}.svg".format(b64encode(s.encode('ascii')).decode('ascii'))
                      for s in smiles]}
+
+    if args.additional is not None:
+        sizes = [2 for _ in range(len(smiles) - len(addit_smiles))] + [20 for _ in range(len(addit_smiles))]
+        data_dict["sizes"] = sizes
+
     if len(set(labels)) > 1:
         reaction_classes = [classes[i] for i in labels]
         data_dict["reaction_class"] = reaction_classes
@@ -141,16 +163,24 @@ def main_html_render_reaction(**kwargs):
     p.axis.visible = False
     # add a circle renderer with vectorized colors and sizes
     if reaction_classes is not None:
-        palette = d3['Category10'][len(classes)]
+        if args.additional is not None:
+            palette = d3['Category20'][len(classes)]
+        else:
+            palette = d3['Category10'][len(classes)]
         color_map = CategoricalColorMapper(factors=[v for v in classes.values()],
                                            palette=palette)
         color_transform = {'field': 'reaction_class',
                            'transform': color_map}
-        p.circle('x', 'y', source=s,
-                 fill_alpha=1,
-                 fill_color=color_transform,
-                 line_color=color_transform,
-                 legend='reaction_class')
+        render_params = {"source": s,
+                         "fill_alpha": 1,
+                         "fill_color": color_transform,
+                         "line_color": color_transform,
+                         "legend": "reaction_class"}
+        if args.additional is not None:
+            render_params["fill_alpha"] = 0.5
+            render_params["size"] = "sizes"
+
+        p.circle('x', 'y', **render_params)
     else:
         p.circle('x', 'y', source=s,
                  fill_alpha=0.6)
