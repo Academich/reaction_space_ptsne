@@ -102,16 +102,7 @@ def main_html_render_reaction(doc):
         s = ColumnDataSource(data_ds)
 
     TOOLS = "box_zoom,reset,tap"
-    TOOLTIPS = """
-        <div>
-            <div>
-                <img
-                    src="@sm" alt="@sm" height="300" width="900"
-                    style="float: left; margin: 0px 15px 15px 0px;"
-            >
-            </div>
-        </div>
-    """
+
     # create a new plot with the tools above, and explicit ranges
     p = figure(tools=TOOLS,
                x_range=(res[:, 0].min() - res[:, 0].std(), res[:, 0].max() + res[:, 0].std()),
