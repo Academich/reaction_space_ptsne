@@ -43,7 +43,6 @@ with open("data/visual_validation/rxnClasses.pickle", "rb") as f:
     classes = pickle.load(f)
     factors = [v for v in classes.values()]
 
-
 def main_html_render_reaction(doc):
     # construct model and load weights
     model = torch.load(MODEL_FILENAME, map_location='cpu')
@@ -68,18 +67,33 @@ def main_html_render_reaction(doc):
     classes_to_render = {classes[i] for i in args.classes.split(',')}
 
     if args.additional is not None:
-        with open(args.additional, 'r') as af:
-            addit_smiles = [line.strip() for line in af.readlines()]
-            addit_labels = ["11" for i in addit_smiles]
-        fps_addit = np.array([reaction_fps(s, **params) for s in addit_smiles])
-        input_addit = torch.from_numpy(fps_addit).float()
-        out_addit = model(input_addit)
-        res_addit = out_addit.detach().cpu().numpy()
-        classes_to_render.add("Additional")
-        classes["11"] = "Additional"
-        res = np.vstack((res, res_addit))
-        smiles += addit_smiles
-        labels += addit_labels
+        P1 = "/home/ma/Рабочий стол/paper_reaxys_data/oseltamivir_cut.csv"
+        with open(P1, 'r') as af:
+            addit_smiles1 = [line.strip() for line in af.readlines()]
+            addit_labels1 = ["11" for i in addit_smiles1]
+        fps_addit1 = np.array([reaction_fps(s, **params) for s in addit_smiles1])
+        input_addit1 = torch.from_numpy(fps_addit1).float()
+        out_addit1 = model(input_addit1)
+        res_addit1 = out_addit1.detach().cpu().numpy()
+        classes_to_render.add("Oseltamivir")
+        classes["11"] = "Oseltamivir"
+        res = np.vstack((res, res_addit1))
+        smiles += addit_smiles1
+        labels += addit_labels1
+
+        P2 = "/home/ma/Рабочий стол/paper_reaxys_data/darunavir_cut.csv"
+        with open(P2, 'r') as af:
+            addit_smiles2 = [line.strip() for line in af.readlines()]
+            addit_labels2 = ["12" for i in addit_smiles2]
+        fps_addit2 = np.array([reaction_fps(s, **params) for s in addit_smiles2])
+        input_addit2 = torch.from_numpy(fps_addit2).float()
+        out_addit2 = model(input_addit2)
+        res_addit2 = out_addit2.detach().cpu().numpy()
+        classes_to_render.add("Darunavir")
+        classes["12"] = "Darunavir"
+        res = np.vstack((res, res_addit2))
+        smiles += addit_smiles2
+        labels += addit_labels2
 
     data_dict = {"x": res[:, 0],
                  "y": res[:, 1],
@@ -88,14 +102,18 @@ def main_html_render_reaction(doc):
                      for s in smiles]}
 
     if args.additional is not None:
-        sizes = [5 for _ in range(len(smiles) - len(addit_smiles))] + [20 for _ in range(len(addit_smiles))]
+        sizes = [5 for _ in range(len(smiles) - len(addit_smiles1) - len(addit_smiles2))] + [20 for _ in range(len(addit_smiles1) + len(addit_smiles2))]
         data_dict["sizes"] = sizes
+        data_dict["colors"] = ["grey" for _ in range(len(smiles) - len(addit_smiles1) - len(addit_smiles2))] + ["red" for _ in range(len(addit_smiles1))] + ["purple" for _ in range(len(addit_smiles2))]
 
     if len(set(labels)) > 1:
         reaction_classes = [classes[i] for i in labels]
+        for i in range(reaction_classes.index("Oseltamivir")):
+            reaction_classes[i] = "Validation dataset points"
+        print(reaction_classes)
         data_dict["reaction_class"] = reaction_classes
         data_ds = pd.DataFrame.from_dict(data_dict)
-        data_ds = data_ds[data_ds["reaction_class"].isin(classes_to_render)]
+        # data_ds = data_ds[data_ds["reaction_class"].isin(classes_to_render)]
         s = ColumnDataSource(data_ds)
     else:
         reaction_classes = None
@@ -135,18 +153,18 @@ def main_html_render_reaction(doc):
                      "size": size,
 
                      "fill_alpha": alpha,
-                     "fill_color": color_transform,
-                     "line_color": color_transform,
+                     "fill_color": "colors",
+                     "line_color": "colors",
                      "line_alpha": alpha,
 
                      "selection_fill_alpha": alpha,
-                     "selection_fill_color": color_transform,
+                     "selection_fill_color": "colors",
                      "selection_line_color": "black",
                      "selection_line_alpha": alpha,
 
                      "nonselection_fill_alpha": alpha,
-                     "nonselection_fill_color": color_transform,
-                     "nonselection_line_color": color_transform,
+                     "nonselection_fill_color": "colors",
+                     "nonselection_line_color": "colors",
                      "nonselection_line_alpha": alpha
                      }
 
