@@ -9,13 +9,11 @@ import torch
 import pandas as pd
 from bokeh.models import ColumnDataSource, CategoricalColorMapper, Row, Div
 from bokeh.events import Tap
-from bokeh.plotting import figure, output_file, show
-from bokeh.palettes import d3
+from bokeh.plotting import figure
+from bokeh.palettes import d3, Category10_10
 from bokeh.server.server import Server
 
-from utils.descriptors import ecfp
 from utils.reactions import reaction_fps
-from datasets import ReactionSmartsTemplatesDataset
 
 hv.extension('bokeh')
 
@@ -24,11 +22,11 @@ parser.add_argument('--dataset', '-d', help='path to dataset')
 parser.add_argument('--model', '-m', help='path to saved model')
 parser.add_argument('--classes', '-c', help='labels of classes to render for reactions; example: 0,1,2,3',
                     default='1,2,3,4,5,6,7,8,9,10')
-parser.add_argument('--additional', '-a', help='path to additional file with reaction smiles', default=None)
+parser.add_argument('--additional', '-a', help='Paths to additional file with reaction smiles separated by commas',
+                    default=None)
 args = parser.parse_args()
 
 dataset = args.dataset
-MODEL_FILENAME = args.model
 with open(args.model.replace(".pt", ".json")) as f:
     settings = json.load(f)["settings"]
 params = {"fp_method": settings["fp_method"],
@@ -41,14 +39,14 @@ params = {"fp_method": settings["fp_method"],
           }
 with open("data/visual_validation/rxnClasses.pickle", "rb") as f:
     classes = pickle.load(f)
-    factors = [v for v in classes.values()]
+
+additional_classes = []
+
+model = torch.load(args.model, map_location='cpu')
+model.eval()
 
 
 def main_html_render_reaction(doc):
-    # construct model and load weights
-    model = torch.load(MODEL_FILENAME, map_location='cpu')
-    model.eval()
-
     with open(dataset, "r") as ff:
         smiles = []
         labels = []
@@ -67,19 +65,24 @@ def main_html_render_reaction(doc):
     res = out.detach().cpu().numpy()
     classes_to_render = {classes[i] for i in args.classes.split(',')}
 
+    all_addit_smiles = []
     if args.additional is not None:
-        with open(args.additional, 'r') as af:
-            addit_smiles = [line.strip() for line in af.readlines()]
-            addit_labels = ["11" for i in addit_smiles]
-        fps_addit = np.array([reaction_fps(s, **params) for s in addit_smiles])
-        input_addit = torch.from_numpy(fps_addit).float()
-        out_addit = model(input_addit)
-        res_addit = out_addit.detach().cpu().numpy()
-        classes_to_render.add("Additional")
-        classes["11"] = "Additional"
-        res = np.vstack((res, res_addit))
-        smiles += addit_smiles
-        labels += addit_labels
+        for p in args.additional.split(','):
+            addit_name = p.split("/")[-1].split('.')[0]
+            addit_name = addit_name.capitalize()
+            with open(p, 'r') as af:
+                addit_smiles = [line.strip() for line in af.readlines()]
+                addit_labels = [addit_name for _ in addit_smiles]
+            fps_addit = np.array([reaction_fps(s, **params) for s in addit_smiles])
+            input_addit = torch.from_numpy(fps_addit).float()
+            out_addit = model(input_addit)
+            res_addit = out_addit.detach().cpu().numpy()
+            classes_to_render.add(addit_name)
+            additional_classes.append(addit_name)
+            res = np.vstack((res, res_addit))
+            all_addit_smiles += addit_smiles
+            labels += addit_labels
+    smiles += all_addit_smiles
 
     data_dict = {"x": res[:, 0],
                  "y": res[:, 1],
@@ -88,11 +91,15 @@ def main_html_render_reaction(doc):
                      for s in smiles]}
 
     if args.additional is not None:
-        sizes = [5 for _ in range(len(smiles) - len(addit_smiles))] + [20 for _ in range(len(addit_smiles))]
+        sizes = [5 for _ in range(len(smiles) - len(all_addit_smiles))] + [20 for _ in range(len(all_addit_smiles))]
         data_dict["sizes"] = sizes
 
     if len(set(labels)) > 1:
-        reaction_classes = [classes[i] for i in labels]
+        if args.additional is not None:
+            reaction_classes = ["Validation dataset points" if i in classes else i for i in labels]
+            classes_to_render.add("Validation dataset points")
+        else:
+            reaction_classes = [classes[i] for i in labels]
         data_dict["reaction_class"] = reaction_classes
         data_ds = pd.DataFrame.from_dict(data_dict)
         data_ds = data_ds[data_ds["reaction_class"].isin(classes_to_render)]
@@ -115,10 +122,14 @@ def main_html_render_reaction(doc):
     p.axis.visible = True
     # add a circle renderer with vectorized colors and sizes
 
-    palette = d3['Category10'][len(factors)]
-    if args.additional is not None:
-        factors.append("Additional")
-        palette += ("#73472d",)
+    if additional_classes:
+        palette = Category10_10[:len(additional_classes)] + ("#C0C0C0",)
+        factors = sorted(additional_classes) + ["Validation dataset points"]
+    else:
+        # factors = sorted(list(classes_to_render))
+        factors = [v for v in classes.values()]
+        palette = d3['Category10'][len(factors)]
+
     color_map = CategoricalColorMapper(factors=factors,
                                        palette=palette)
     color_transform = {'field': 'reaction_class',
@@ -183,7 +194,10 @@ def main_html_render_reaction(doc):
 
 
 if __name__ == '__main__':
-    server = Server({'/': main_html_render_reaction}, num_procs=1)
+    server = Server({'/': main_html_render_reaction},
+                    num_procs=1,
+                    address="0.0.0.0",
+                    allow_websocket_origin=["0.0.0.0:5006", "localhost:5006"])
     server.start()
     print('Opening Bokeh application on http://localhost:5006/')
     server.io_loop.add_callback(server.show, "/")
