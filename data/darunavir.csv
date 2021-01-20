@@ -1,0 +1,7 @@
+CC(C)CN(C[C@@H](O)[C@H](Cc1ccccc1)NC(=O)O[C@H]1CO[C@H]2OCC[C@@H]12)S(=O)(=O)c1ccc([N+](=O)[O-])cc1.[HH].CO.[Pd]>>CC(C)CN(C[C@@H](O)[C@H](Cc1ccccc1)NC(=O)O[C@H]1CO[C@H]2OCC[C@@H]12)S(=O)(=O)c1ccc(N)cc1
+CC(C)CN(C[C@@H](O)[C@H](Cc1ccccc1)NC(=O)O[C@H]1CO[C@H]2OCC[C@@H]12)S(=O)(=O)c1ccc([N+](=O)[O-])cc1.[HH].CCOC(C)=O>>CC(C)CN(C[C@@H](O)[C@H](Cc1ccccc1)NC(=O)O[C@H]1CO[C@H]2OCC[C@@H]12)S(=O)(=O)c1ccc(N)cc1
+CC(C)CNC[C@@H](O)[C@H](Cc1ccccc1)NC(=O)O[C@H]1CO[C@H]2OCC[C@@H]12.Nc1ccc(S(=O)(=O)Cl)cc1.O=C([O-])O.[Na+].ClCCl.O>>CC(C)CN(C[C@@H](O)[C@H](Cc1ccccc1)NC(=O)O[C@H]1CO[C@H]2OCC[C@@H]12)S(=O)(=O)c1ccc(N)cc1
+CC(C)CN(C[C@@H](O)[C@H](Cc1ccccc1)NC(=O)O[C@H]1CO[C@H]2OCC[C@@H]12)S(=O)(=O)c1ccc(N2C(=O)c3ccccc3C2=O)cc1.CN.O>>CC(C)CN(C[C@@H](O)[C@H](Cc1ccccc1)NC(=O)O[C@H]1CO[C@H]2OCC[C@@H]12)S(=O)(=O)c1ccc(N)cc1
+O=C(Oc1ccc([N+](=O)[O-])cc1)O[C@H]1CO[C@H]2OCC[C@@H]12.CC(C)CN(C[C@@H](O)[C@@H](N)Cc1ccccc1)S(=O)(=O)c1ccc(N)cc1.CN1CCCC1=O>>CC(C)CN(C[C@@H](O)[C@H](Cc1ccccc1)NC(=O)O[C@H]1CO[C@H]2OCC[C@@H]12)S(=O)(=O)c1ccc(N)cc1
+Nc1ccc(S(=O)(=O)Cl)cc1.CC(C)CN.O=C(n1ccnc1)n1ccnc1.O[C@H]1CO[C@H]2OCC[C@@H]12.Cl.N[C@@H](Cc1ccccc1)[C@H](O)CCl.C1CCOC1>>CC(C)CN(C[C@@H](O)[C@H](Cc1ccccc1)NC(=O)O[C@H]1CO[C@H]2OCC[C@@H]12)S(=O)(=O)c1ccc(N)cc1
+Cl.CC(C)CN(C[C@@H](O)[C@@H](N)Cc1ccccc1)S(=O)(=O)c1ccc(N)cc1.O=C(O[C@H]1CO[C@H]2OCC[C@@H]12)ON1C(=O)CCC1=O.ClCCl.[OH-].[Na+].O.CCN(CC)CC>>CC(C)CN(C[C@@H](O)[C@H](Cc1ccccc1)NC(=O)O[C@H]1CO[C@H]2OCC[C@@H]12)S(=O)(=O)c1ccc(N)cc1
