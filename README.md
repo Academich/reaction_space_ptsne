@@ -6,6 +6,13 @@ This is the repositary accompanying tha paper. It contains a pytorch implementat
 
 ![image](space.png)
 ## Usage
+Before using the code, create a new conda environment and install requred packages:
+```
+conda create -n <environment name> anaconda python=3.7
+conda activate <environment name>
+conda install -c conda-forge rdkit
+conda install pytorch lightgbm
+```
 
 ### Training of new models
 Use the script `train.py` to train a new model. This requires a train dataset in the form of a file with reaction SMILES
@@ -28,4 +35,12 @@ The config file contains the following instructions and hyperparameters:
 * "training": section for training hyperparameters, which is used in `model.fit_model` function    
 
 ### Exploration of the results
-The script `visual_evaluation/visualize_projection.py`
+The script `visual_evaluation/visualize_projection.py` can be used to assess the visualization performance of a trained 
+model.  
+
+**Basic usage**  
+Run the following commands in terminal:
+1. `export PYTHONPATH=<directory of the project>`
+2. `python3 rendering_server.py` 
+3. `python3 visual_evaluation/render_reactions.py -d <path to validation dataset> -m <path to model>`
+Explore the map of reaction space in a Bokeh application.
