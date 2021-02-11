@@ -3,19 +3,17 @@ import json
 import pickle
 from base64 import b64encode
 
-import holoviews as hv
 import numpy as np
 import torch
 import pandas as pd
 from bokeh.models import ColumnDataSource, CategoricalColorMapper, Row, Div
+from bokeh.models.annotations import Title
 from bokeh.events import Tap
 from bokeh.plotting import figure
 from bokeh.palettes import d3, Category10_10
 from bokeh.server.server import Server
 
 from utils.reactions import reaction_fps
-
-hv.extension('bokeh')
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', '-d', help='path to dataset')
@@ -109,7 +107,10 @@ def main_html_render_reaction(doc):
         data_ds = pd.DataFrame.from_dict(data_dict)
         s = ColumnDataSource(data_ds)
 
-    TOOLS = "box_zoom,reset,tap"
+    # data_dict["smiles"] = smiles
+    # pd.DataFrame.from_dict(data_dict).to_csv("/home/ma/Рабочий стол/morg30_ep_40_coords_osel_darun.csv")
+
+    TOOLS = "box_zoom,reset,tap,pan"
 
     # create a new plot with the tools above, and explicit ranges
     p = figure(tools=TOOLS,
@@ -120,6 +121,9 @@ def main_html_render_reaction(doc):
     p.xgrid.grid_line_color = None
     p.ygrid.grid_line_color = None
     p.axis.visible = True
+    ti = Title()
+    ti.text = "Reaction space parametric t-SNE projection"
+    p.title = ti
     # add a circle renderer with vectorized colors and sizes
 
     if additional_classes:
@@ -196,8 +200,8 @@ def main_html_render_reaction(doc):
 if __name__ == '__main__':
     server = Server({'/': main_html_render_reaction},
                     num_procs=1,
-                    address="0.0.0.0",
-                    allow_websocket_origin=["0.0.0.0:5006", "localhost:5006"])
+                    address="127.0.0.1",
+                    allow_websocket_origin=["127.0.0.1:5006", "localhost:5006"])
     server.start()
     print('Opening Bokeh application on http://localhost:5006/')
     server.io_loop.add_callback(server.show, "/")

@@ -18,8 +18,6 @@ def loss_function(p_joint: Tensor, q_joint: Tensor) -> Tensor:
     :param q_joint:
     :return: KLDiv value
     """
-    # TODO Add here alpha gradient calculation too
-    # TODO Add L2-penalty for early compression?
     return (p_joint * torch.log((p_joint + EPS) / (q_joint + EPS))).sum()
 
 

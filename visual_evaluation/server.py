@@ -22,30 +22,10 @@ def draw_reaction_smarts(smarts: str, use_smiles: bool = True, highlight: bool =
     return svg.replace('svg:', '').replace(':svg', '')
 
 
-@app.route("/render_molecule/<image>.svg")
-def render_molecule(image):
-    mol = Chem.MolFromSmiles(b64decode(image).decode('ascii'))
-    rdDepictor.Compute2DCoords(mol)
-    mc = Chem.Mol(mol.ToBinary())
-    Chem.Kekulize(mc)
-    drawer = Draw.MolDraw2DSVG(100, 100)
-    drawer.DrawMolecule(mc)
-    drawer.FinishDrawing()
-    svg = drawer.GetDrawingText().replace(':svg', '').replace('svg:', '')
-    return send_file(BytesIO(svg.encode('ascii')), mimetype='image/svg+xml')
-
-
 @app.route("/render_reaction/<image>.svg")
 def render_reaction(image):
     smarts = b64decode(image).decode('ascii')
     svg = draw_reaction_smarts(smarts, use_smiles=True, highlight=True)
-    return send_file(BytesIO(svg.encode('ascii')), mimetype='image/svg+xml')
-
-
-@app.route("/render_template/<image>.svg")
-def render_template(image):
-    smarts = b64decode(image).decode('ascii')
-    svg = draw_reaction_smarts(smarts, use_smiles=False, highlight=True)
     return send_file(BytesIO(svg.encode('ascii')), mimetype='image/svg+xml')
 
 
