@@ -15,7 +15,6 @@ class Config:
         self.dev = conf_dict["device"]
         self.seed = conf_dict["seed"]
         self.save_flag = bool(conf_dict['save_model'])
-        self.problem = conf_dict["problem"]
 
         self.problem_settings = conf_dict["problem_settings"]
         self.optimization_conf = conf_dict["optimization"]
