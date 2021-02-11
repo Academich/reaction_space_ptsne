@@ -26,6 +26,11 @@ def squared_euc_dists(x: tensor) -> tensor:
 
 
 def squared_jaccard_distances(x: tensor) -> tensor:
+    """
+    Calculates squared jaccard dissimilarities between rows
+    :param x: Matrix of input points (n_points, n_dimensions)
+    :return: Matrix of squared jaccard dissimilarities between x_i and x_j (n_points, n_points)
+    """
     n_ones = x.sum(dim=1)
     intersection = x @ x.t()
     sum_of_ones = n_ones + n_ones.unsqueeze(1)
@@ -49,6 +54,20 @@ def calculate_optimized_p_cond(input_points: tensor,
                                max_iter: int,
                                min_allowed_sig_sq: float,
                                max_allowed_sig_sq: float):
+    """
+    Adjust sigmas for every row in conditional probability matrix
+    to match the given perplexity using binary search
+    :param input_points: Unoptimized conditional probability matrix
+    :param perplexity: The hyperparameter that governs the dispersion of
+    conditional probabilities.
+    :param dist_func: A string denoting the desired distance function
+    :param tol: The tolerance threshold for binary search
+    :param max_iter: Number of maximum iterations for binary search
+    :param min_allowed_sig_sq: Minimum allowed value for squared sigmas
+    :param max_allowed_sig_sq: Maximum allowed value for squared sigmas
+    :return: Conditional probability matrix optimized to match the given perplexity
+    """
+
     n_points = input_points.size(0)
     target_entropy = log2(perplexity)
     diag_mask = (1 - eye(n_points)).to(device(config.dev))
