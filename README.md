@@ -2,7 +2,7 @@
 __Exploring Chemical Reaction Space With Reaction Difference Fingerprints and Parametric t-SNE__  
 _Mikhail G. Andronov,Maxim V. Fedorov,and Sergey Sosnin_
 
-This is the repositary accompanying tha paper. It contains a pytorch implementation of the parametric t-SNE algorithm and the pretrained models to visualize chemical reaction space.
+This is the repositary accompanying the paper. It contains a pytorch implementation of the parametric t-SNE algorithm and the pretrained models to visualize chemical reaction space.
 
 ![image](space.png)
 ## Usage
