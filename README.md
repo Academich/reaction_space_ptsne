@@ -14,6 +14,8 @@ conda activate <environment name>
 conda install -c conda-forge rdkit
 conda install pytorch lightgbm
 ```
+### Pretrained models
+Some pretrained models are available at https://zenodo.org/record/4536502#.YDPTCXUzZH4
 
 ### Training of new models
 Use the script `train.py` to train a new model. This requires a train dataset in the form of a file with reaction SMILES
