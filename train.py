@@ -1,7 +1,6 @@
 import json
 import datetime
 import argparse
-
 import torch
 
 from datasets import ReactionSmilesDataset, BERTFpsReactionSmilesDataset
@@ -25,7 +24,6 @@ if __name__ == '__main__':
         torch.manual_seed(config.seed)
     dev = torch.device(config.dev)
     print(dev, flush=True)
-    print(config.problem, flush=True)
 
     settings = config.problem_settings["reactions"]
     path = f"data/{settings['filename']}"
