@@ -1,5 +1,6 @@
 import datetime
 import json
+from tqdm import tqdm
 
 import torch
 from torch import nn, Tensor
@@ -66,7 +67,7 @@ def fit_model(model: nn.Module,
     for epoch in range(n_epochs):
         epoch_start_time = datetime.datetime.now()
         train_loss = 0
-        for list_with_batch in train_dl:
+        for list_with_batch in tqdm(train_dl):
             orig_points_batch, _ = list_with_batch
             with torch.no_grad():
                 p_cond_in_batch = calculate_optimized_p_cond(orig_points_batch,

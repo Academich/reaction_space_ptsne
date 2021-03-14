@@ -1,10 +1,9 @@
 import json
 import datetime
 import argparse
-
 import torch
 
-from datasets import ReactionSmilesDataset
+from datasets import ReactionSmilesDataset, BERTFpsReactionSmilesDataset
 from model import fit_model, NeuralMapper
 from config import config
 
@@ -25,21 +24,25 @@ if __name__ == '__main__':
         torch.manual_seed(config.seed)
     dev = torch.device(config.dev)
     print(dev, flush=True)
-    print(config.problem, flush=True)
 
     settings = config.problem_settings["reactions"]
     path = f"data/{settings['filename']}"
     print(path, flush=True)
     fp_method = settings["fp_method"]
-    params = {"n_bits": settings["n_bits"],
-              "fp_type": settings["fp_type"],
-              "include_agents": settings["include_agents"],
-              "agent_weight": settings["agent_weight"],
-              "non_agent_weight": settings["non_agent_weight"],
-              "bit_ratio_agents": settings["bit_ratio_agents"]
-              }
-    dim_input = settings["n_bits"]
-    points_ds = ReactionSmilesDataset(path, dev, fp_method, params)
+    if fp_method == "transformer":
+        dim_input = 256
+        no_agents = settings["no_agents"]
+        points_ds = BERTFpsReactionSmilesDataset(path, no_agents, dev)
+    else:
+        params = {"n_bits": settings["n_bits"],
+                  "fp_type": settings["fp_type"],
+                  "include_agents": settings["include_agents"],
+                  "agent_weight": settings["agent_weight"],
+                  "non_agent_weight": settings["non_agent_weight"],
+                  "bit_ratio_agents": settings["bit_ratio_agents"]
+                  }
+        dim_input = settings["n_bits"]
+        points_ds = ReactionSmilesDataset(path, dev, fp_method, params)
 
     net = NeuralMapper
     ffnn = net(dim_input=dim_input).to(dev)
