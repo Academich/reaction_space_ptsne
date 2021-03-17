@@ -58,6 +58,7 @@ class BERTFpsReactionSmilesDataset(Dataset):
         self.dev = dev
         self.smiles = []
         self.labels = []
+        self.fps_dict = {}
         with open(self.filepath) as _file:
             for i, line in enumerate(_file):
                 try:
@@ -76,5 +77,10 @@ class BERTFpsReactionSmilesDataset(Dataset):
         return len(self.smiles)
 
     def __getitem__(self, idx):
-        bert_fingerprint = rxnfp_generator.convert(self.smiles[idx])
+        smi = self.smiles[idx]
+        if smi not in self.fps_dict:
+            bert_fingerprint = rxnfp_generator.convert(self.smiles[idx])
+            self.fps_dict[smi] = bert_fingerprint
+        else:
+            bert_fingerprint = self.fps_dict[smi]
         return torch.tensor(bert_fingerprint).float().to(self.dev), self.labels[idx]
