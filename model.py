@@ -60,7 +60,7 @@ def fit_model(model: nn.Module,
     :return:
     """
     model.train()
-    n_points = len(input_points)
+    batches_passed = 0
     train_dl = DataLoader(input_points, batch_size=batch_size, shuffle=True)
     model_name = get_random_string(6)
     epoch_losses = []
@@ -81,6 +81,7 @@ def fit_model(model: nn.Module,
                     continue
                 p_joint_in_batch = make_joint(p_cond_in_batch)
             opt.zero_grad()
+            batches_passed += 1
             embeddings = model(orig_points_batch)
             q_joint_in_batch = get_q_joint(embeddings, "euc", alpha=1)
             if early_exaggeration:
@@ -99,7 +100,7 @@ def fit_model(model: nn.Module,
             with open(save_path + ".json", "w") as here:
                 json.dump(json.loads(configuration_report), here)
             print('Model saved as %s' % save_path, flush=True)
-        average_loss = train_loss / n_points
+        average_loss = train_loss / batches_passed
         epoch_losses.append(average_loss)
         if save_model_flag and epoch == n_epochs - 1:
             epoch_losses = array(epoch_losses)
