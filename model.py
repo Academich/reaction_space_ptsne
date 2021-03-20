@@ -1,5 +1,6 @@
 import datetime
 import json
+import os
 from tqdm import tqdm
 
 import torch
@@ -22,11 +23,13 @@ def loss_function(p_joint: Tensor, q_joint: Tensor) -> Tensor:
     return (p_joint * torch.log((p_joint + EPS) / (q_joint + EPS))).sum()
 
 
-def fit_model(model: nn.Module,
+def fit_model(model: torch.nn.Module,
               input_points: Dataset,
               opt: Optimizer,
               perplexity: int,
               n_epochs: int,
+              save_dir_path: str,
+              epochs_to_save_after: int,
               early_exaggeration: int,
               early_exaggeration_constant: int,
               batch_size: int,
@@ -35,7 +38,6 @@ def fit_model(model: nn.Module,
               bin_search_max_iter: int,
               min_allowed_sig_sq: float,
               max_allowed_sig_sq: float,
-              save_model_flag: bool,
               configuration_report: str
               ) -> None:
     """
@@ -45,6 +47,9 @@ def fit_model(model: nn.Module,
     :param opt: optimizer instance
     :param perplexity: perplexity
     :param n_epochs: Number of epochs for training
+    :param save_dir_path: path to directory to save a trained model to
+    :param epochs_to_save_after: number of epochs to save a model after. If passed None,
+    model won't be saved at all
     :param early_exaggeration: Number of first training cycles in which
     exaggeration will be applied
     :param early_exaggeration_constant: Constant by which p_joint is multiplied in early exaggeration
@@ -55,7 +60,6 @@ def fit_model(model: nn.Module,
     :param bin_search_max_iter: Number of max iterations for binary search
     :param min_allowed_sig_sq: Minimal allowed value for squared sigmas
     :param max_allowed_sig_sq: Maximal allowed value for squared sigmas
-    :param save_model_flag: A flag whather to save model or not
     :param configuration_report: Config of the model in string form for report purposes
     :return:
     """
@@ -94,20 +98,24 @@ def fit_model(model: nn.Module,
         epoch_end_time = datetime.datetime.now()
         time_elapsed = epoch_end_time - epoch_start_time
 
-        save_path = "saved_models/" + f"{model_name}_epoch_{epoch + 1}"
-        if save_model_flag and (epoch + 1) % 5 == 0:
+        # Report loss for epoch
+        average_loss = train_loss / batches_passed
+        epoch_losses.append(average_loss)
+        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {average_loss:.4f}', flush=True)
+
+        # Save model and loss history if needed
+        save_path = os.path.join(save_dir_path, f"{model_name}_epoch_{epoch + 1}")
+        if epochs_to_save_after is not None and (epoch + 1) % epochs_to_save_after == 0:
             torch.save(model, save_path + ".pt")
             with open(save_path + ".json", "w") as here:
                 json.dump(json.loads(configuration_report), here)
             print('Model saved as %s' % save_path, flush=True)
-        average_loss = train_loss / batches_passed
-        epoch_losses.append(average_loss)
-        if save_model_flag and epoch == n_epochs - 1:
+
+        if epochs_to_save_after is not None and epoch == n_epochs - 1:
             epoch_losses = array(epoch_losses)
             loss_save_path = save_path + "_loss.npy"
             np_save(loss_save_path, epoch_losses)
             print("Loss history saved in", loss_save_path, flush=True)
-        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {average_loss:.4f}', flush=True)
 
 
 def get_batch_embeddings(model: nn.Module,

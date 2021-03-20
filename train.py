@@ -66,7 +66,8 @@ if __name__ == '__main__':
               points_ds,
               opt,
               **config.training_params,
-              save_model_flag=config.save_flag,
+              epochs_to_save_after=config.epochs_to_save_after,
+              save_dir_path=config.save_dir_path,
               configuration_report=report_config)
 
     fin = datetime.datetime.now()
