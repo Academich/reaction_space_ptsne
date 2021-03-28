@@ -34,7 +34,12 @@ class ReactionSmilesDataset(Dataset):
                 except ValueError:
                     smi = line
                     label = 0
-                self.smiles.append(smi.strip())
+                if not params["include_agents"]:
+                    reactants, agents, products = smi.split(">")
+                    rearranged_smi = f"{reactants}.{agents}>>{products}"
+                    self.smiles.append(rearranged_smi)
+                else:
+                    self.smiles.append(smi.strip())
                 self.labels.append(int(label))
 
     def __len__(self):
