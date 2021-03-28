@@ -14,7 +14,8 @@ class Config:
     def __init__(self):
         self.dev = conf_dict["device"]
         self.seed = conf_dict["seed"]
-        self.save_flag = bool(conf_dict['save_model'])
+        self.save_dir_path = conf_dict["save_dir_path"]
+        self.epochs_to_save_after = conf_dict["epochs_to_save_after"]
 
         self.problem_settings = conf_dict["problem_settings"]
         self.optimization_conf = conf_dict["optimization"]

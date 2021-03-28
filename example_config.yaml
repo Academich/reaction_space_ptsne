@@ -1,6 +1,7 @@
 device: "cpu"
 seed: 50
-save_model: True
+save_dir_path: "saved_models"
+epochs_to_save_after: 10
 
 problem_settings:
   reactions:
