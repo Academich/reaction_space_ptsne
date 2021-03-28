@@ -8,12 +8,14 @@ problem_settings:
     filename: "whole_sanitized_us_patents.csv"
     fp_method: "transformer"
     no_agents: False
+
     n_bits: 2048
     fp_type: "MorganFP"
-    "include_agents": True
-    "agent_weight": 1
-    "non_agent_weight": 10
-    "bit_ratio_agents": 0.2
+    include_agents: False
+    agent_weight: 1
+    non_agent_weight: 10
+
+    bit_ratio_agents: 0.2
 
 optimization:
   lr: 0.002
