@@ -8,7 +8,7 @@ import torch
 from torch import nn, Tensor
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, Dataset
-from numpy import array, mean
+from numpy import array, mean, vstack
 from numpy import save as np_save
 
 from utils.utils import EPS, get_q_joint, calculate_optimized_p_cond, make_joint, get_random_string, \
@@ -99,14 +99,37 @@ def fit_model(model: torch.nn.Module,
             loss.backward()
             opt.step()
 
+        model.eval()
+        for val_list_with_batch in tqdm(val_dl):
+            val_orig_points_batch, _ = val_list_with_batch
+            with torch.no_grad():
+                p_joint_in_batch_val = calc_p_joint_in_batch(perplexity,
+                                                             val_orig_points_batch,
+                                                             dist_func_name,
+                                                             bin_search_tol,
+                                                             bin_search_max_iter,
+                                                             min_allowed_sig_sq,
+                                                             max_allowed_sig_sq)
+            val_embeddings = model(val_orig_points_batch)
+            q_joint_in_batch_val = get_q_joint(val_embeddings, "euc", alpha=1)
+            loss_val = loss_function(p_joint_in_batch_val, q_joint_in_batch_val)
+            val_batch_losses.append(loss_val.item())
+
         train_epoch_loss = mean(train_batch_losses)
         train_epoch_losses.append(train_epoch_loss)
+        val_epoch_loss = mean(val_batch_losses)
+        val_epoch_losses.append(val_epoch_loss)
+
+        train_batch_losses = []
+        val_batch_losses = []
 
         epoch_end_time = datetime.datetime.now()
         time_elapsed = epoch_end_time - epoch_start_time
 
         # Report loss for epoch
-        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {train_epoch_loss:.4f}', flush=True)
+        print(
+            f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {train_epoch_loss:.4f}. Val loss: {val_epoch_loss:.4f}',
+            flush=True)
 
         # Save model and loss history if needed
         save_path = os.path.join(save_dir_path, f"{model_name}_epoch_{epoch + 1}")
@@ -118,8 +141,10 @@ def fit_model(model: torch.nn.Module,
 
         if epochs_to_save_after is not None and epoch == n_epochs - 1:
             loss_save_path = save_path + "_loss.npy"
-            np_save(loss_save_path, array(train_epoch_losses))
-            print(train_epoch_losses)
+            np_save(loss_save_path,
+                    vstack((array(train_epoch_losses),
+                            array(val_epoch_losses)))
+                    )
             print("Loss history saved in", loss_save_path, flush=True)
 
 
