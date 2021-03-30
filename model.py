@@ -8,7 +8,7 @@ import torch
 from torch import nn, Tensor
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, Dataset
-from numpy import array
+from numpy import array, mean
 from numpy import save as np_save
 
 from utils.utils import EPS, get_q_joint, calculate_optimized_p_cond, make_joint, get_random_string, \
@@ -26,7 +26,8 @@ def loss_function(p_joint: Tensor, q_joint: Tensor) -> Tensor:
 
 
 def fit_model(model: torch.nn.Module,
-              input_points: Dataset,
+              train_dl: DataLoader,
+              val_dl: DataLoader,
               opt: Optimizer,
               perplexity: int,
               n_epochs: int,
@@ -45,7 +46,8 @@ def fit_model(model: torch.nn.Module,
     """
     Fits t-SNE model
     :param model: nn.Module instance
-    :param input_points: tensor of original points
+    :param train_dl: data loader with points for training
+    :param val_dl: data loader with points for validation and early stopping
     :param opt: optimizer instance
     :param perplexity: perplexity
     :param n_epochs: Number of epochs for training
@@ -65,14 +67,15 @@ def fit_model(model: torch.nn.Module,
     :param configuration_report: Config of the model in string form for report purposes
     :return:
     """
-    model.train()
-    batches_passed = 0
-    train_dl = DataLoader(input_points, batch_size=batch_size, shuffle=True)
     model_name = get_random_string(6)
-    epoch_losses = []
+    train_batch_losses = []
+    train_epoch_losses = []
+    val_batch_losses = []
+    val_epoch_losses = []
+
     for epoch in range(n_epochs):
         epoch_start_time = datetime.datetime.now()
-        train_loss = 0
+        model.train()
         for list_with_batch in tqdm(train_dl):
             orig_points_batch, _ = list_with_batch
             with torch.no_grad():
@@ -112,23 +115,25 @@ def fit_model(model: torch.nn.Module,
                     p_joint_in_batch = mscl_p_joint_in_batch / n_different_entropies
 
             opt.zero_grad()
-            batches_passed += 1
+
             embeddings = model(orig_points_batch)
             q_joint_in_batch = get_q_joint(embeddings, "euc", alpha=1)
             if early_exaggeration:
                 p_joint_in_batch *= early_exaggeration_constant
                 early_exaggeration -= 1
             loss = loss_function(p_joint_in_batch, q_joint_in_batch)
-            train_loss += loss.item()
+            train_batch_losses.append(loss.item())
             loss.backward()
             opt.step()
+
+        train_epoch_loss = mean(train_batch_losses)
+        train_epoch_losses.append(train_epoch_loss)
+
         epoch_end_time = datetime.datetime.now()
         time_elapsed = epoch_end_time - epoch_start_time
 
         # Report loss for epoch
-        average_loss = train_loss / batches_passed
-        epoch_losses.append(average_loss)
-        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {average_loss:.4f}', flush=True)
+        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {train_epoch_loss:.4f}', flush=True)
 
         # Save model and loss history if needed
         save_path = os.path.join(save_dir_path, f"{model_name}_epoch_{epoch + 1}")
@@ -139,9 +144,9 @@ def fit_model(model: torch.nn.Module,
             print('Model saved as %s' % save_path, flush=True)
 
         if epochs_to_save_after is not None and epoch == n_epochs - 1:
-            epoch_losses = array(epoch_losses)
             loss_save_path = save_path + "_loss.npy"
-            np_save(loss_save_path, epoch_losses)
+            np_save(loss_save_path, array(train_epoch_losses))
+            print(train_epoch_losses)
             print("Loss history saved in", loss_save_path, flush=True)
 
 
