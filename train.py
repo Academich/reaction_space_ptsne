@@ -5,6 +5,7 @@ import torch
 
 from datasets import ReactionSmilesDataset, BERTFpsReactionSmilesDataset
 from model import fit_model, NeuralMapper
+from utils.early_stopping import split_train_val
 from config import config
 
 parser = argparse.ArgumentParser()
@@ -62,8 +63,11 @@ if __name__ == '__main__':
     report_config = json.dumps({"settings": settings,
                                 "optimization": config.optimization_conf,
                                 "training": config.training_params})
+
+    train_dl, val_dl = split_train_val(points_ds, val_size=0.25, batch_size=config.training_params["batch_size"])
     fit_model(ffnn,
-              points_ds,
+              train_dl,
+              val_dl,
               opt,
               **config.training_params,
               epochs_to_save_after=config.epochs_to_save_after,

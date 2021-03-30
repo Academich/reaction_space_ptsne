@@ -8,7 +8,7 @@ import torch
 from torch import nn, Tensor
 from torch.optim.optimizer import Optimizer
 from torch.utils.data import DataLoader, Dataset
-from numpy import array
+from numpy import array, mean, vstack
 from numpy import save as np_save
 
 from utils.utils import EPS, get_q_joint, calculate_optimized_p_cond, make_joint, get_random_string, \
@@ -26,7 +26,8 @@ def loss_function(p_joint: Tensor, q_joint: Tensor) -> Tensor:
 
 
 def fit_model(model: torch.nn.Module,
-              input_points: Dataset,
+              train_dl: DataLoader,
+              val_dl: DataLoader,
               opt: Optimizer,
               perplexity: int,
               n_epochs: int,
@@ -45,7 +46,8 @@ def fit_model(model: torch.nn.Module,
     """
     Fits t-SNE model
     :param model: nn.Module instance
-    :param input_points: tensor of original points
+    :param train_dl: data loader with points for training
+    :param val_dl: data loader with points for validation and early stopping
     :param opt: optimizer instance
     :param perplexity: perplexity
     :param n_epochs: Number of epochs for training
@@ -65,70 +67,69 @@ def fit_model(model: torch.nn.Module,
     :param configuration_report: Config of the model in string form for report purposes
     :return:
     """
-    model.train()
-    batches_passed = 0
-    train_dl = DataLoader(input_points, batch_size=batch_size, shuffle=True)
     model_name = get_random_string(6)
-    epoch_losses = []
+    train_batch_losses = []
+    train_epoch_losses = []
+    val_batch_losses = []
+    val_epoch_losses = []
+
     for epoch in range(n_epochs):
         epoch_start_time = datetime.datetime.now()
-        train_loss = 0
+        model.train()
         for list_with_batch in tqdm(train_dl):
             orig_points_batch, _ = list_with_batch
             with torch.no_grad():
-                if perplexity is not None:
-                    target_entropy = log2(perplexity)
-                    p_cond_in_batch = calculate_optimized_p_cond(orig_points_batch,
-                                                                 target_entropy,
-                                                                 dist_func_name,
-                                                                 bin_search_tol,
-                                                                 bin_search_max_iter,
-                                                                 min_allowed_sig_sq,
-                                                                 max_allowed_sig_sq)
-                    if p_cond_in_batch is None:
-                        continue
-                    p_joint_in_batch = make_joint(p_cond_in_batch)
-
-                else:
-                    _bs = orig_points_batch.size(0)
-                    max_entropy = round(log2(_bs / 2))
-                    n_different_entropies = 0
-                    mscl_p_joint_in_batch = initialize_multiscale_p_joint(_bs)
-                    for h in range(1, max_entropy):
-                        p_cond_for_h = calculate_optimized_p_cond(orig_points_batch,
-                                                                  h,
-                                                                  dist_func_name,
-                                                                  bin_search_tol,
-                                                                  bin_search_max_iter,
-                                                                  min_allowed_sig_sq,
-                                                                  max_allowed_sig_sq)
-                        if p_cond_for_h is None:
-                            continue
-                        n_different_entropies += 1
-
-                        p_joint_for_h = make_joint(p_cond_for_h)
-                        mscl_p_joint_in_batch += p_joint_for_h
-
-                    p_joint_in_batch = mscl_p_joint_in_batch / n_different_entropies
+                p_joint_in_batch = calc_p_joint_in_batch(perplexity,
+                                                         orig_points_batch,
+                                                         dist_func_name,
+                                                         bin_search_tol,
+                                                         bin_search_max_iter,
+                                                         min_allowed_sig_sq,
+                                                         max_allowed_sig_sq)
 
             opt.zero_grad()
-            batches_passed += 1
+
             embeddings = model(orig_points_batch)
             q_joint_in_batch = get_q_joint(embeddings, "euc", alpha=1)
             if early_exaggeration:
                 p_joint_in_batch *= early_exaggeration_constant
                 early_exaggeration -= 1
             loss = loss_function(p_joint_in_batch, q_joint_in_batch)
-            train_loss += loss.item()
+            train_batch_losses.append(loss.item())
             loss.backward()
             opt.step()
+
+        model.eval()
+        for val_list_with_batch in tqdm(val_dl):
+            val_orig_points_batch, _ = val_list_with_batch
+            with torch.no_grad():
+                p_joint_in_batch_val = calc_p_joint_in_batch(perplexity,
+                                                             val_orig_points_batch,
+                                                             dist_func_name,
+                                                             bin_search_tol,
+                                                             bin_search_max_iter,
+                                                             min_allowed_sig_sq,
+                                                             max_allowed_sig_sq)
+            val_embeddings = model(val_orig_points_batch)
+            q_joint_in_batch_val = get_q_joint(val_embeddings, "euc", alpha=1)
+            loss_val = loss_function(p_joint_in_batch_val, q_joint_in_batch_val)
+            val_batch_losses.append(loss_val.item())
+
+        train_epoch_loss = mean(train_batch_losses)
+        train_epoch_losses.append(train_epoch_loss)
+        val_epoch_loss = mean(val_batch_losses)
+        val_epoch_losses.append(val_epoch_loss)
+
+        train_batch_losses = []
+        val_batch_losses = []
+
         epoch_end_time = datetime.datetime.now()
         time_elapsed = epoch_end_time - epoch_start_time
 
         # Report loss for epoch
-        average_loss = train_loss / batches_passed
-        epoch_losses.append(average_loss)
-        print(f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {average_loss:.4f}', flush=True)
+        print(
+            f'====> Epoch: {epoch + 1}. Time {time_elapsed}. Average loss: {train_epoch_loss:.4f}. Val loss: {val_epoch_loss:.4f}',
+            flush=True)
 
         # Save model and loss history if needed
         save_path = os.path.join(save_dir_path, f"{model_name}_epoch_{epoch + 1}")
@@ -139,29 +140,57 @@ def fit_model(model: torch.nn.Module,
             print('Model saved as %s' % save_path, flush=True)
 
         if epochs_to_save_after is not None and epoch == n_epochs - 1:
-            epoch_losses = array(epoch_losses)
             loss_save_path = save_path + "_loss.npy"
-            np_save(loss_save_path, epoch_losses)
+            np_save(loss_save_path,
+                    vstack((array(train_epoch_losses),
+                            array(val_epoch_losses)))
+                    )
             print("Loss history saved in", loss_save_path, flush=True)
 
 
-def get_batch_embeddings(model: nn.Module,
-                         input_points: Dataset,
-                         batch_size: int,
-                         ) -> Tensor:
-    """
-    Yields final embeddings for every batch in dataset
-    :param model:
-    :param input_points:
-    :param batch_size:
-    :return:
-    """
-    model.eval()
-    test_dl = DataLoader(input_points, batch_size=batch_size, shuffle=False)
-    for batch_points, batch_labels in test_dl:
-        with torch.no_grad():
-            embeddings = model(batch_points)
-            yield embeddings, batch_labels
+def calc_p_joint_in_batch(perplexity,
+                          batch,
+                          dist_func_name,
+                          bin_search_tol,
+                          bin_search_max_iter,
+                          min_allowed_sig_sq,
+                          max_allowed_sig_sq):
+    if perplexity is not None:
+        target_entropy = log2(perplexity)
+        p_cond_in_batch = calculate_optimized_p_cond(batch,
+                                                     target_entropy,
+                                                     dist_func_name,
+                                                     bin_search_tol,
+                                                     bin_search_max_iter,
+                                                     min_allowed_sig_sq,
+                                                     max_allowed_sig_sq)
+        if p_cond_in_batch is None:
+            return
+        p_joint_in_batch = make_joint(p_cond_in_batch)
+
+    else:
+        _bs = batch.size(0)
+        max_entropy = round(log2(_bs / 2))
+        n_different_entropies = 0
+        mscl_p_joint_in_batch = initialize_multiscale_p_joint(_bs)
+        for h in range(1, max_entropy):
+            p_cond_for_h = calculate_optimized_p_cond(batch,
+                                                      h,
+                                                      dist_func_name,
+                                                      bin_search_tol,
+                                                      bin_search_max_iter,
+                                                      min_allowed_sig_sq,
+                                                      max_allowed_sig_sq)
+            if p_cond_for_h is None:
+                continue
+            n_different_entropies += 1
+
+            p_joint_for_h = make_joint(p_cond_for_h)
+            mscl_p_joint_in_batch += p_joint_for_h
+
+        p_joint_in_batch = mscl_p_joint_in_batch / n_different_entropies
+
+    return p_joint_in_batch
 
 
 def weights_init(m: nn.Module) -> None:
