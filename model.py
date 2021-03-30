@@ -79,40 +79,13 @@ def fit_model(model: torch.nn.Module,
         for list_with_batch in tqdm(train_dl):
             orig_points_batch, _ = list_with_batch
             with torch.no_grad():
-                if perplexity is not None:
-                    target_entropy = log2(perplexity)
-                    p_cond_in_batch = calculate_optimized_p_cond(orig_points_batch,
-                                                                 target_entropy,
-                                                                 dist_func_name,
-                                                                 bin_search_tol,
-                                                                 bin_search_max_iter,
-                                                                 min_allowed_sig_sq,
-                                                                 max_allowed_sig_sq)
-                    if p_cond_in_batch is None:
-                        continue
-                    p_joint_in_batch = make_joint(p_cond_in_batch)
-
-                else:
-                    _bs = orig_points_batch.size(0)
-                    max_entropy = round(log2(_bs / 2))
-                    n_different_entropies = 0
-                    mscl_p_joint_in_batch = initialize_multiscale_p_joint(_bs)
-                    for h in range(1, max_entropy):
-                        p_cond_for_h = calculate_optimized_p_cond(orig_points_batch,
-                                                                  h,
-                                                                  dist_func_name,
-                                                                  bin_search_tol,
-                                                                  bin_search_max_iter,
-                                                                  min_allowed_sig_sq,
-                                                                  max_allowed_sig_sq)
-                        if p_cond_for_h is None:
-                            continue
-                        n_different_entropies += 1
-
-                        p_joint_for_h = make_joint(p_cond_for_h)
-                        mscl_p_joint_in_batch += p_joint_for_h
-
-                    p_joint_in_batch = mscl_p_joint_in_batch / n_different_entropies
+                p_joint_in_batch = calc_p_joint_in_batch(perplexity,
+                                                         orig_points_batch,
+                                                         dist_func_name,
+                                                         bin_search_tol,
+                                                         bin_search_max_iter,
+                                                         min_allowed_sig_sq,
+                                                         max_allowed_sig_sq)
 
             opt.zero_grad()
 
@@ -150,23 +123,49 @@ def fit_model(model: torch.nn.Module,
             print("Loss history saved in", loss_save_path, flush=True)
 
 
-def get_batch_embeddings(model: nn.Module,
-                         input_points: Dataset,
-                         batch_size: int,
-                         ) -> Tensor:
-    """
-    Yields final embeddings for every batch in dataset
-    :param model:
-    :param input_points:
-    :param batch_size:
-    :return:
-    """
-    model.eval()
-    test_dl = DataLoader(input_points, batch_size=batch_size, shuffle=False)
-    for batch_points, batch_labels in test_dl:
-        with torch.no_grad():
-            embeddings = model(batch_points)
-            yield embeddings, batch_labels
+def calc_p_joint_in_batch(perplexity,
+                          batch,
+                          dist_func_name,
+                          bin_search_tol,
+                          bin_search_max_iter,
+                          min_allowed_sig_sq,
+                          max_allowed_sig_sq):
+    if perplexity is not None:
+        target_entropy = log2(perplexity)
+        p_cond_in_batch = calculate_optimized_p_cond(batch,
+                                                     target_entropy,
+                                                     dist_func_name,
+                                                     bin_search_tol,
+                                                     bin_search_max_iter,
+                                                     min_allowed_sig_sq,
+                                                     max_allowed_sig_sq)
+        if p_cond_in_batch is None:
+            return
+        p_joint_in_batch = make_joint(p_cond_in_batch)
+
+    else:
+        _bs = batch.size(0)
+        max_entropy = round(log2(_bs / 2))
+        n_different_entropies = 0
+        mscl_p_joint_in_batch = initialize_multiscale_p_joint(_bs)
+        for h in range(1, max_entropy):
+            p_cond_for_h = calculate_optimized_p_cond(batch,
+                                                      h,
+                                                      dist_func_name,
+                                                      bin_search_tol,
+                                                      bin_search_max_iter,
+                                                      min_allowed_sig_sq,
+                                                      max_allowed_sig_sq)
+            if p_cond_for_h is None:
+                continue
+            n_different_entropies += 1
+
+            p_joint_for_h = make_joint(p_cond_for_h)
+            mscl_p_joint_in_batch += p_joint_for_h
+
+        p_joint_in_batch = mscl_p_joint_in_batch / n_different_entropies
+
+    return p_joint_in_batch
 
 
 def weights_init(m: nn.Module) -> None:
