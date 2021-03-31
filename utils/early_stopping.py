@@ -1,18 +1,18 @@
 from typing import Union
 
-from numpy import floor
-from numpy.random import shuffle
+import numpy as np
 
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.sampler import SubsetRandomSampler
 
 
-def split_train_val(train_dataset: Dataset, val_size: Union[float, int], batch_size: int):
+def split_train_val(train_dataset: Dataset, val_size: Union[float, int], batch_size: int, seed: int):
     n_points = len(train_dataset)
     all_idx = list(range(n_points))
-    shuffle(all_idx)
+    np.random.seed(seed)
+    np.random.shuffle(all_idx)
     if val_size < 1:
-        split = int(floor(val_size * n_points))
+        split = int(np.floor(val_size * n_points))
     else:
         split = int(val_size)
 

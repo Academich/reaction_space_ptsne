@@ -47,7 +47,6 @@ if __name__ == '__main__':
 
     net = NeuralMapper
     ffnn = net(dim_input=dim_input).to(dev)
-    untrained_ref_ffnn = net(dim_input=dim_input).to(dev)
     opt = torch.optim.Adam(ffnn.parameters(), **config.optimization_conf)
 
     # Training and evaluating
@@ -64,7 +63,10 @@ if __name__ == '__main__':
                                 "optimization": config.optimization_conf,
                                 "training": config.training_params})
 
-    train_dl, val_dl = split_train_val(points_ds, val_size=0.25, batch_size=config.training_params["batch_size"])
+    train_dl, val_dl = split_train_val(points_ds,
+                                       val_size=0.2,
+                                       batch_size=config.training_params["batch_size"],
+                                       seed=config.seed)
     fit_model(ffnn,
               train_dl,
               val_dl,
