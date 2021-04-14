@@ -24,6 +24,16 @@ loaded_model = torch.load(args.model,
                           map_location=dev)
 loaded_model.eval()
 
+
+def num_reagents(reac_smi):
+    if ">>" in reac_smi:
+        ag_reag = reac_smi.split(">>")[0]
+        return len(ag_reag.rstrip(".").split("."))
+    else:
+        reag, ag = reac_smi.split(">")[:-1]
+        return len(reag.rstrip(".").split(".")) + len(ag.rstrip(".").split("."))
+
+
 with open("data/visual_validation/rxnClasses.pickle", "rb") as f:
     classes = pickle.load(f)
     classes = {int(k): v for k, v in classes.items()}
@@ -87,5 +97,6 @@ factors = [v for v in classes.values()]
 palette = d3['Category10'][len(factors)]
 color_map = {k: v for k, v in zip(factors, palette)}
 res["color_transform"] = res["reaction_class"].map(color_map)
+res["num_reagents"] = res["smiles"].map(num_reagents)
 
 res.to_csv(args.output, sep=",", header=True, index=False)
