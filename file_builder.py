@@ -19,12 +19,17 @@ parser.add_argument("--transformer", default=False, action="store_true",
                     help="A flag whether to transform test SMILES to BERT fingerprints")
 parser.add_argument("--remove-repeated", default=False, action="store_true",
                     help="A flag whether to remove repeating compounds from reaction before calculating fingerprints")
+parser.add_argument("--banned-reagents", default='', type=str,
+                    help="All the reagents separated by comma that will be removed from reactions"
+                         "before calculating fingerprints. Example: 'CCO,CN'")
 args = parser.parse_args()
 
 dev = torch.device(args.device)
 loaded_model = torch.load(args.model,
                           map_location=dev)
 loaded_model.eval()
+
+banned_reagents = set(args.banned_reagents.split(","))
 
 
 def extract_ag_reag_prod(reac_smi: str):
@@ -53,6 +58,19 @@ def remove_repeated_reagents(reac_smi: str):
     return f'{".".join(refined_reag)}>{".".join(refined_ag)}>{prod_smi}'
 
 
+def remove_particular_reagents(reac_smi: str):
+    reag_smi, ag_smi, prod_smi = extract_ag_reag_prod(reac_smi)
+    refined_reag = []
+    refined_ag = []
+    for rg in reag_smi.split("."):
+        if rg not in banned_reagents:
+            refined_reag.append(rg)
+    for rg in ag_smi.split("."):
+        if rg not in banned_reagents:
+            refined_ag.append(rg)
+    return f'{".".join(refined_reag)}>{".".join(refined_ag)}>{prod_smi}'
+
+
 with open("data/visual_validation/rxnClasses.pickle", "rb") as f:
     classes = pickle.load(f)
     classes = {int(k): v for k, v in classes.items()}
@@ -63,6 +81,9 @@ all_embs = {"x": [], "y": []}
 
 if args.remove_repeated:
     data["smiles"] = data["smiles"].map(remove_repeated_reagents)
+
+if len(banned_reagents) > 0:
+    data["smiles"] = data["smiles"].map(remove_particular_reagents)
 
 if args.transformer:
     from rxnfp.transformer_fingerprints import (
