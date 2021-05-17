@@ -16,18 +16,25 @@ def split_train_val(train_dataset: Dataset, val_size: Union[float, int], batch_s
     else:
         split = int(val_size)
 
-    train_idx, val_idx = all_idx[split:], all_idx[:split]
+    n_folds = n_points // split
+    for i in range(n_folds):
+        print(f"Fold {i + 1}", flush=True)
+        val_start_idx = split * i
+        val_end_idx = split * (i + 1)
+        val_end_idx = min(val_end_idx, n_points)
+        val_idx = all_idx[val_start_idx:val_end_idx]
+        train_idx = all_idx[:val_start_idx] + all_idx[val_end_idx:]
 
-    train_sampler = SubsetRandomSampler(train_idx)
-    validation_sampler = SubsetRandomSampler(val_idx)
+        train_sampler = SubsetRandomSampler(train_idx)
+        validation_sampler = SubsetRandomSampler(val_idx)
 
-    train_loader = DataLoader(train_dataset,
-                              batch_size=batch_size,
-                              sampler=train_sampler)
+        train_loader = DataLoader(train_dataset,
+                                  batch_size=batch_size,
+                                  sampler=train_sampler)
 
-    valid_loader = DataLoader(train_dataset,
-                              batch_size=batch_size,
-                              sampler=validation_sampler,
-                              num_workers=0)
+        valid_loader = DataLoader(train_dataset,
+                                  batch_size=batch_size,
+                                  sampler=validation_sampler,
+                                  num_workers=0)
 
-    return train_loader, valid_loader
+        yield train_loader, valid_loader
