@@ -76,7 +76,10 @@ with open("data/visual_validation/rxnClasses.pickle", "rb") as f:
     classes = {int(k): v for k, v in classes.items()}
 
 data = pd.read_csv(args.test_data, sep=";", header=None)
-data.columns = ["smiles", "label"]
+try:
+    data.columns = ["smiles", "label"]
+except ValueError:
+    data.columns = ["smiles"]
 all_embs = {"x": [], "y": []}
 
 if args.remove_repeated:
@@ -134,12 +137,15 @@ all_embs = pd.DataFrame(all_embs)
 res = pd.concat((data, all_embs), axis=1)
 res["alpha"] = 1
 res["sizes"] = 5
-res["reaction_class"] = res["label"].map(classes)
-
-factors = [v for v in classes.values()]
-palette = d3['Category10'][len(factors)]
-color_map = {k: v for k, v in zip(factors, palette)}
-res["color_transform"] = res["reaction_class"].map(color_map)
-res["num_reagents"] = res["smiles"].map(count_ag_reag)
+try:
+    res["reaction_class"] = res["label"].map(classes)
+    factors = [v for v in classes.values()]
+    palette = d3['Category10'][len(factors)]
+    color_map = {k: v for k, v in zip(factors, palette)}
+    res["color_transform"] = res["reaction_class"].map(color_map)
+except KeyError:
+    pass
+finally:
+    res["num_reagents"] = res["smiles"].map(count_ag_reag)
 
 res.to_csv(args.output, sep=",", header=True, index=False)
