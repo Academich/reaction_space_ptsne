@@ -63,18 +63,18 @@ if __name__ == '__main__':
                                 "optimization": config.optimization_conf,
                                 "training": config.training_params})
 
-    for train_dl, val_dl in split_train_val(points_ds,
-                                            val_size=150000,
-                                            batch_size=config.training_params["batch_size"],
-                                            seed=config.seed):
-        fit_model(ffnn,
-                  train_dl,
-                  val_dl,
-                  opt,
-                  **config.training_params,
-                  epochs_to_save_after=config.epochs_to_save_after,
-                  save_dir_path=config.save_dir_path,
-                  configuration_report=report_config)
+    train_dl, val_dl = split_train_val(points_ds,
+                                       val_size=0.2,
+                                       batch_size=config.training_params["batch_size"],
+                                       seed=config.seed)
+    fit_model(ffnn,
+              train_dl,
+              val_dl,
+              opt,
+              **config.training_params,
+              epochs_to_save_after=config.epochs_to_save_after,
+              save_dir_path=config.save_dir_path,
+              configuration_report=report_config)
 
-        fin = datetime.datetime.now()
-        print("Training time:", fin - start, flush=True)
+    fin = datetime.datetime.now()
+    print("Training time:", fin - start, flush=True)
