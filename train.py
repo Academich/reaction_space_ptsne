@@ -6,9 +6,11 @@ import torch
 from datasets import ReactionSmilesDataset, BERTFpsReactionSmilesDataset
 from model import fit_model, NeuralMapper
 from utils.early_stopping import split_train_val
-from config import config
+from config import Config, get_conf_dict
 
 parser = argparse.ArgumentParser()
+parser.add_argument('--config', '-c', type=str, default='config.yaml', 
+                    help='path to configuration file')
 parser.add_argument('--perplexity', '-p', type=int, default=None,
                     help='perplexity to use instead of one in the config')
 parser.add_argument('--epochs', '-e', type=int, default=None,
@@ -17,6 +19,9 @@ parser.add_argument('--batchsize', '-b', type=int, default=None,
                     help='batch size to use instead of one in the config')
 
 args = parser.parse_args()
+
+cfg_path = get_conf_dict(args.config)
+config = Config(cfg_path)
 
 if __name__ == '__main__':
 
