@@ -1,16 +1,17 @@
 device: "cpu"
-seed: 50
+seed: 1525
 save_dir_path: "saved_models"
 epochs_to_save_after: 10
 
 problem_settings:
   reactions:
-    filename: "whole_sanitized_us_patents.csv"
-    fp_method: "transformer"
-    no_agents: False
+    train_filename: "whole_sanitized_us_patents.csv"
+    val_filename: null
+    fp_method: "difference"
+    no_agents: True
 
     n_bits: 2048
-    fp_type: "MorganFP"
+    fp_type: "TopologicalTorsion"
     include_agents: False
     agent_weight: 1
     non_agent_weight: 10
@@ -22,10 +23,10 @@ optimization:
 
 training:
   perplexity: 30
-  n_epochs: 20
-  early_exaggeration: 4
+  n_epochs: 10
+  early_exaggeration: 0
   early_exaggeration_constant: 5
-  batch_size: 100
+  batch_size: 7000
   bin_search_max_iter: 100
   bin_search_tol: 0.0001
   dist_func_name: "euc"
