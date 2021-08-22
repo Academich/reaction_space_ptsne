@@ -27,13 +27,20 @@ if __name__ == '__main__':
     print(dev, flush=True)
 
     settings = config.problem_settings["reactions"]
-    path = f"data/{settings['filename']}"
-    print(path, flush=True)
+    train_path = f"data/{settings['train_filename']}"
+    val_path = f"data/{settings['val_filename']}" if settings['val_filename'] is not None else None
+    val_points_ds = None
+
+    print("Train:", train_path, flush=True)
+    if val_path is not None:
+        print("Validation:", val_path, flush=True)
     fp_method = settings["fp_method"]
     if fp_method == "transformer":
         dim_input = 256
         no_agents = settings["no_agents"]
-        points_ds = BERTFpsReactionSmilesDataset(path, no_agents, dev)
+        points_ds = BERTFpsReactionSmilesDataset(train_path, no_agents, dev)
+        if val_path is not None:
+            val_points_ds = BERTFpsReactionSmilesDataset(val_path, no_agents, dev)
     else:
         params = {"n_bits": settings["n_bits"],
                   "fp_type": settings["fp_type"],
@@ -43,7 +50,9 @@ if __name__ == '__main__':
                   "bit_ratio_agents": settings["bit_ratio_agents"]
                   }
         dim_input = settings["n_bits"]
-        points_ds = ReactionSmilesDataset(path, dev, fp_method, params)
+        points_ds = ReactionSmilesDataset(train_path, dev, fp_method, params)
+        if val_path is not None:
+            val_points_ds = ReactionSmilesDataset(val_path, dev, fp_method, params)
 
     net = NeuralMapper
     ffnn = net(dim_input=dim_input).to(dev)
@@ -63,10 +72,21 @@ if __name__ == '__main__':
                                 "optimization": config.optimization_conf,
                                 "training": config.training_params})
 
-    train_dl, val_dl = split_train_val(points_ds,
-                                       val_size=0.2,
-                                       batch_size=config.training_params["batch_size"],
-                                       seed=config.seed)
+    bsize = config.training_params["batch_size"]
+    if val_path is None:
+        train_dl, val_dl = split_train_val(points_ds,
+                                           val_size=150000,
+                                           batch_size=bsize,
+                                           seed=config.seed)
+    else:
+        train_dl, _ = split_train_val(points_ds,
+                                      val_size=0,
+                                      batch_size=bsize,
+                                      seed=config.seed)
+        val_dl, _ = split_train_val(val_points_ds,
+                                    val_size=0,
+                                    batch_size=bsize,
+                                    seed=config.seed)
     fit_model(ffnn,
               train_dl,
               val_dl,
