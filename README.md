@@ -14,8 +14,6 @@ conda activate <environment name>
 conda install -c conda-forge rdkit
 conda install pytorch lightgbm
 ```
-### Pretrained models
-Some pretrained models are available at https://zenodo.org/record/4536502#.YDPTCXUzZH4
 
 ### Training of new models
 Use the script `train.py` to train a new model. This requires a train dataset in the form of a file with reaction SMILES
@@ -36,14 +34,3 @@ The config file contains the following instructions and hyperparameters:
 * "optimization":
     * "lr": learning rate for the Adam optimizer
 * "training": section for training hyperparameters, which is used in `model.fit_model` function    
-
-### Exploration of the results
-The script `visual_evaluation/visualize_projection.py` can be used to assess the visualization performance of a trained 
-model.  
-
-**Basic usage**  
-Run the following commands in terminal:
-1. `export PYTHONPATH=<directory of the project>`
-2. `python3 rendering_server.py` 
-3. `python3 visual_evaluation/render_reactions.py -d <path to validation dataset> -m <path to model>`
-Explore the map of reaction space in a Bokeh application.
