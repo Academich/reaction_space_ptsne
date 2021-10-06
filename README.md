@@ -5,7 +5,7 @@ _Mikhail G. Andronov,Maxim V. Fedorov,and Sergey Sosnin_. ChemRxiv. Preprint. ht
 
 This is the repositary accompanying the paper. It contains a pytorch implementation of the parametric t-SNE algorithm and the pretrained models to visualize chemical reaction space.
 
-![image](space.png)
+![image](projection_example.png)
 ## Usage
 Before using the code, create a new conda environment and install requred packages:
 ```
