@@ -1,21 +1,13 @@
-import random
-import string
+from typing import Optional
 from math import log2
-from torch import tensor, eye, ones, device, isnan, zeros
-from torch import max as torch_max
-from config import config
 
-EPS = tensor([1e-10]).to(device(config.dev))
+import torch
+from torch import Tensor
 
-
-def get_random_string(length: int) -> str:
-    """Generates random string of ascii chars"""
-    letters = string.ascii_lowercase
-    result_str = ''.join(random.choice(letters) for _ in range(length))
-    return result_str
+EPS = 1e-10
 
 
-def squared_euc_dists(x: tensor) -> tensor:
+def squared_euc_dists(x: 'Tensor') -> 'Tensor':
     """
     Calculates squared euclidean distances between rows
     :param x: Matrix of input points (n_points, n_dimensions)
@@ -25,7 +17,7 @@ def squared_euc_dists(x: tensor) -> tensor:
     return sq_norms + sq_norms.unsqueeze(1) - 2 * x @ x.t()
 
 
-def jaccard_distances(x: tensor) -> tensor:
+def jaccard_distances(x: 'Tensor') -> 'Tensor':
     """
     Calculates jaccard dissimilarities between rows.
     Rows should be binary vectors. Pretty fast function.
@@ -39,7 +31,7 @@ def jaccard_distances(x: tensor) -> tensor:
     return 1 - similarity
 
 
-def squared_jaccard_distances(x: tensor) -> tensor:
+def squared_jaccard_distances(x: 'Tensor') -> 'Tensor':
     """
     Calculates squared jaccard dissimilarities between rows.
     Rows should be binary vectors. Pretty fast function.
@@ -49,7 +41,7 @@ def squared_jaccard_distances(x: tensor) -> tensor:
     return jaccard_distances(x) ** 2
 
 
-def general_jaccard_distances(x: tensor) -> tensor:
+def general_jaccard_distances(x: 'Tensor') -> 'Tensor':
     """
     Calculates jaccard dissimilarities between rows.
     Rows may be continuous vectors. Pretty slow function
@@ -66,7 +58,7 @@ def general_jaccard_distances(x: tensor) -> tensor:
     return 1 - similarity
 
 
-def squared_general_jaccard_distances(x: tensor) -> tensor:
+def squared_general_jaccard_distances(x: 'Tensor') -> 'Tensor':
     """
     Calculates squared jaccard dissimilarities between rows.
     Rows may be continuous vectors. Pretty slow function
@@ -76,7 +68,7 @@ def squared_general_jaccard_distances(x: tensor) -> tensor:
     return general_jaccard_distances(x) ** 2
 
 
-def squared_cosine_distances(x: tensor) -> tensor:
+def squared_cosine_distances(x: 'Tensor') -> 'Tensor':
     raise NotImplementedError
 
 
@@ -86,12 +78,12 @@ distance_functions = {"euc": squared_euc_dists,
                       "cosine": squared_cosine_distances}
 
 
-def initialize_multiscale_p_joint(batch_size: int) -> tensor:
-    res = zeros(batch_size, batch_size).to(device(config.dev))
+def initialize_multiscale_p_joint(batch_size: int) -> 'Tensor':
+    res = torch.zeros(batch_size, batch_size)
     return res
 
 
-def calculate_optimized_p_cond(input_points: tensor,
+def calculate_optimized_p_cond(input_points: 'Tensor',
                                target_entropy: float,
                                dist_func: str,
                                tol: float,
@@ -112,16 +104,17 @@ def calculate_optimized_p_cond(input_points: tensor,
     :return: Conditional probability matrix optimized to match the given perplexity
     """
 
-    n_points = input_points.size(0)
+    n_points = input_points.size()[0]
 
-    diag_mask = (1 - eye(n_points)).to(device(config.dev))
+    diag_mask = (1 - torch.eye(n_points)).type_as(input_points)
 
     dist_f = distance_functions[dist_func]
     distances = dist_f(input_points)
 
     # Binary search for optimal squared sigmas
-    min_sigma_sq = (min_allowed_sig_sq + 1e-20) * ones(n_points).to(device(config.dev))
-    max_sigma_sq = max_allowed_sig_sq * ones(n_points).to(device(config.dev))
+    unit = torch.ones(n_points).type_as(input_points)
+    min_sigma_sq = unit * (min_allowed_sig_sq + 1e-20)
+    max_sigma_sq = unit * max_allowed_sig_sq
     sq_sigmas = (min_sigma_sq + max_sigma_sq) / 2
     p_cond = get_p_cond(distances, sq_sigmas, diag_mask)
     ent_diff = entropy(p_cond) - target_entropy
@@ -144,13 +137,13 @@ def calculate_optimized_p_cond(input_points: tensor,
         ent_diff = entropy(p_cond) - target_entropy
         finished = ent_diff.abs() < tol
         curr_iter += 1
-    if isnan(ent_diff.max()):
+    if torch.isnan(ent_diff.max()):
         print("Warning! Entropy is nan. Discarding batch", flush=True)
         return
     return p_cond
 
 
-def get_p_cond(distances: tensor, sigmas_sq: tensor, mask: tensor) -> tensor:
+def get_p_cond(distances: 'Tensor', sigmas_sq: 'Tensor', mask: 'Tensor') -> 'Tensor':
     """
     Calculates conditional probability distribution given distances and squared sigmas
     :param distances: Matrix of squared distances ||x_i - x_j||^2
@@ -158,14 +151,15 @@ def get_p_cond(distances: tensor, sigmas_sq: tensor, mask: tensor) -> tensor:
     :param mask: A mask tensor to set diagonal elements to zero
     :return: Conditional probability matrix
     """
-    logits = -distances / (2 * torch_max(sigmas_sq, EPS).view(-1, 1))
+    eps = torch.tensor([EPS]).type_as(distances)
+    logits = -distances / (2 * torch.max(sigmas_sq, eps).view(-1, 1))
     logits.exp_()
     masked_exp_logits = logits * mask
-    normalization = torch_max(masked_exp_logits.sum(1), EPS).unsqueeze(1)
+    normalization = torch.max(masked_exp_logits.sum(1), eps).unsqueeze(1)
     return masked_exp_logits / normalization + 1e-10
 
 
-def get_q_joint(emb_points: tensor, dist_func: str, alpha: int, ) -> tensor:
+def get_q_joint(emb_points: 'Tensor', dist_func: str, alpha: int, ) -> 'Tensor':
     """
     Calculates the joint probability matrix in embedding space.
     :param emb_points: Points in embeddings space
@@ -173,16 +167,17 @@ def get_q_joint(emb_points: tensor, dist_func: str, alpha: int, ) -> tensor:
     :param dist_func: A kay name for a distance function
     :return: Joint distribution matrix in emb. space
     """
-    n_points = emb_points.size(0)
-    mask = (-eye(n_points) + 1).to(emb_points.device)
+    eps = torch.tensor([EPS]).type_as(emb_points)
+    n_points = emb_points.size()[0]
+    mask = (-torch.eye(n_points) + 1).to(emb_points.device)
     dist_f = distance_functions[dist_func]
     distances = dist_f(emb_points) / alpha
     q_joint = (1 + distances).pow(-(1 + alpha) / 2) * mask
     q_joint /= q_joint.sum()
-    return torch_max(q_joint, EPS)
+    return torch.max(q_joint, eps)
 
 
-def entropy(p: tensor) -> tensor:
+def entropy(p: 'Tensor') -> 'Tensor':
     """
     Calculates Shannon Entropy for every row of a conditional probability matrix
     :param p: Conditional probability matrix, where every row sums up to 1
@@ -191,13 +186,59 @@ def entropy(p: tensor) -> tensor:
     return -(p * p.log2()).sum(dim=1)
 
 
-def make_joint(distr_cond: tensor) -> tensor:
+def make_joint(distr_cond: 'Tensor') -> 'Tensor':
     """
     Makes a joint probability distribution out of conditional distribution
     :param distr_cond: Conditional distribution matrix
     :return: Joint distribution matrix. All values in it sum up to 1.
     Too small values are set to fixed epsilon
     """
-    n_points = distr_cond.size(0)
+    eps = torch.tensor([EPS]).type_as(distr_cond)
+    n_points = distr_cond.size()[0]
     distr_joint = (distr_cond + distr_cond.t()) / (2 * n_points)
-    return torch_max(distr_joint, EPS)
+    return torch.max(distr_joint, eps)
+
+
+def calc_p_joint_in_batch(batch: 'Tensor',
+                          dist_func_name: str,
+                          perplexity: Optional[int],
+                          bin_search_tol: float,
+                          bin_search_max_iter: int,
+                          min_allowed_sig_sq: int,
+                          max_allowed_sig_sq: int):
+    if perplexity is not None:
+        target_entropy = log2(perplexity)
+        p_cond_in_batch = calculate_optimized_p_cond(batch,
+                                                     target_entropy,
+                                                     dist_func_name,
+                                                     bin_search_tol,
+                                                     bin_search_max_iter,
+                                                     min_allowed_sig_sq,
+                                                     max_allowed_sig_sq)
+        if p_cond_in_batch is None:
+            return
+        p_joint_in_batch = make_joint(p_cond_in_batch)
+
+    else:
+        _bs = batch.size()[0]
+        max_entropy = round(log2(_bs / 2))
+        n_different_entropies = 0
+        mscl_p_joint_in_batch = torch.zeros(_bs, _bs).type_as(batch)
+        for h in range(1, max_entropy):
+            p_cond_for_h = calculate_optimized_p_cond(batch,
+                                                      h,
+                                                      dist_func_name,
+                                                      bin_search_tol,
+                                                      bin_search_max_iter,
+                                                      min_allowed_sig_sq,
+                                                      max_allowed_sig_sq)
+            if p_cond_for_h is None:
+                continue
+            n_different_entropies += 1
+
+            p_joint_for_h = make_joint(p_cond_for_h)
+            mscl_p_joint_in_batch += p_joint_for_h
+
+        p_joint_in_batch = mscl_p_joint_in_batch / n_different_entropies
+
+    return p_joint_in_batch
