@@ -86,6 +86,7 @@ class PTSNEMapper(pl.LightningModule):
             self.hparams.early_exaggeration -= 1
 
         loss = self.criterion(p_joint_in_batch, q_joint_in_batch)
+        self.log("train/loss", loss, on_step=True, on_epoch=True, sync_dist=True)
 
         return loss
 
@@ -105,6 +106,7 @@ class PTSNEMapper(pl.LightningModule):
             self.hparams.early_exaggeration -= 1
 
         loss = self.criterion(p_joint_in_batch, q_joint_in_batch)
+        self.log("val/loss", loss, on_step=False, on_epoch=True, sync_dist=True)
 
         return loss
 
