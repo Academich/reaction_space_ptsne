@@ -71,7 +71,7 @@ def remove_particular_reagents(reac_smi: str):
     return f'{".".join(refined_reag)}>{".".join(refined_ag)}>{prod_smi}'
 
 
-with open("data/visual_validation/rxnClasses.pickle", "rb") as f:
+with open("../data/visual_validation/rxnClasses.pickle", "rb") as f:
     classes = pickle.load(f)
     classes = {int(k): v for k, v in classes.items()}
 
