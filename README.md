@@ -15,13 +15,21 @@ conda install -c conda-forge rdkit
 conda install pytorch lightgbm
 ```
 
+### Data
+USPTO data used in Schwaller et al. 2018:
+https://ibm.ent.box.com/v/ReactionSeq2SeqDataset  
+(.csv files)
+
+USPTO_50k from Schneider et al. 2016:
+https://pubs.acs.org/doi/suppl/10.1021/acs.jcim.6b00564/suppl_file/ci6b00564_si_002.zip
+
 ### Training of new models
 Use the script `train.py` to train a new model. This requires a train dataset in the form of a file with reaction SMILES
 and a config file. Rename the file `example.config.yaml` as `config.yaml` and set the instructions and parameters in it.
 The config file contains the following instructions and hyperparameters:
 * "device": "cpu" or "cuda" - device to train a model on
 * "seed": random seed for pytorch
-* "save_model": a flag indicating whather to save the model or not
+* "save_model": a flag indicating whether to save the model or not
 * "problem_settings":
     * "filename": path to the train dataset
     * "fp_method": "structural" or "difference" - what type of reaction fingerprints to use
