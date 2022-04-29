@@ -4,6 +4,8 @@ from math import log2
 import torch
 from torch import Tensor
 
+from src.utils.distance import distance_functions
+
 EPS = 1e-10
 
 
