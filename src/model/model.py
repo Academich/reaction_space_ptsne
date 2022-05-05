@@ -122,28 +122,60 @@ class PTSNEMapper(pl.LightningModule):
     def add_model_specific_args(parent_parser):
         parser = parent_parser.add_argument_group("PTSNEMapper")
         # Model
-        parser.add_argument("--learning_rate", type=float, default=0.001)
-        parser.add_argument("--dist_func_name", type=str, default="euc")
-        parser.add_argument("--perplexity", type=int, default=None)
-        parser.add_argument("--bin_search_tol", type=float, default=0.0001)
-        parser.add_argument("--bin_search_max_iter", type=int, default=100)
-        parser.add_argument("--min_allowed_sig_sq", type=int, default=0)
-        parser.add_argument("--max_allowed_sig_sq", type=int, default=10000)
-        parser.add_argument("--early_exaggeration", type=int, default=None)
+        parser.add_argument("--learning_rate", type=float, default=0.001,
+                            help="Constant learning rate for the Adam optimizer.")
+        parser.add_argument("--dist_func_name", type=str, default="euc",
+                            help="Distance function to use in t-SNE. "
+                                 "Options: euc, tanimoto, tanimoto_binary, cosine.")
+        parser.add_argument("--perplexity", type=int, default=None,
+                            help="Perplexity parameter for t-SNE. If not specified, multi-scale t-SNE is run.")
+        parser.add_argument("--bin_search_tol", type=float, default=0.0001,
+                            help="Tolerance threshold for binary search.")
+        parser.add_argument("--bin_search_max_iter", type=int, default=100,
+                            help="Maximum allowed number of iterations of binary search.")
+        parser.add_argument("--min_allowed_sig_sq", type=int, default=0,
+                            help="Minimum allowed dispersion of the gaussian bells used in the domain space.")
+        parser.add_argument("--max_allowed_sig_sq", type=int, default=10000,
+                            help="Maximum allowed dispersion of the gaussian bells used in the domain space.")
+        parser.add_argument("--early_exaggeration", type=int, default=None,
+                            help="Early exaggeration constant. "
+                                 "Increases attractive forces between points in the start of the training. "
+                                 "Not used by default.")
         # DataModule
-        parser.add_argument("--train_path", type=str, default=None)
-        parser.add_argument("--val_path", type=str, default=None)
-        parser.add_argument("--test_path", type=str, default=None)
-        parser.add_argument("--batch_size", type=int, default=1024)
-        parser.add_argument("--num_workers", type=int, default=4)
+        parser.add_argument("--train_path", type=str, default=None,
+                            help="Training data path.")
+        parser.add_argument("--val_path", type=str, default=None,
+                            help="Validation data path.")
+        parser.add_argument("--test_path", type=str, default=None,
+                            help="Test data path.")
+        parser.add_argument("--batch_size", type=int, default=1024,
+                            help="Batch size.")
+        parser.add_argument("--num_workers", type=int, default=4,
+                            help="Number of workers for the data loader.")
         # DataModule fingerprints-related
-        parser.add_argument("--fp_method", type=str, default="difference")
-        parser.add_argument("--fp_type", type=str, default="MorganFP")
-        parser.add_argument("--n_bits", type=int, default=2048)
-        parser.add_argument("--include_agents", action='store_true', default=False)
-        parser.add_argument("--agent_weight", type=float, default=1)
-        parser.add_argument("--non_agent_weight", type=float, default=1)
-        parser.add_argument("--bit_ratio_agents", type=float, default=0.2)
+        parser.add_argument("--fp_method", type=str, default="difference",
+                            help="Type of fingerprints to represent reactions. "
+                                 "Options: difference, structural, transformer. "
+                                 "If 'transformer is chosen', all the following arguments are not used.")
+        parser.add_argument("--fp_type", type=str, default="MorganFP",
+                            help="Type of RDKit fingerprints of individual molecules. "
+                                 "Not used with fp_method=transformer. "
+                                 "Options: MorganFP, TopologicalTorsion, AtomPairFP - "
+                                 "these three work for both difference and structural fingerprints. "
+                                 "Some other RDKit fingerprints work only for fp_method=structural.")
+        parser.add_argument("--n_bits", type=int, default=2048,
+                            help="Number of bits in molecular fingerprints.")
+        parser.add_argument("--include_agents", action='store_true', default=False,
+                            help="Whether to include fingerprints of reagents into the reaction fingerprint.")
+        parser.add_argument("--agent_weight", type=float, default=1,
+                            help="Weight of the contribution of the fingerprints of the reagent "
+                                 "molecules to the reaction difference fingerprint.")
+        parser.add_argument("--non_agent_weight", type=float, default=1,
+                            help="Weight of the contribution of the fingerprints of the reactant and product "
+                                 "molecules to the reaction difference fingerprint."
+                            )
+        parser.add_argument("--bit_ratio_agents", type=float, default=0.2,
+                            help="Relative number of reagent molecules bits in the reaction structural fingerprint.")
         return parent_parser
 
     @classmethod
