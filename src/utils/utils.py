@@ -54,7 +54,7 @@ def calculate_optimized_p_cond(input_points: 'Tensor',
     curr_iter = 0
     while not finished.all().item():
         if curr_iter >= max_iter:
-            print(f"Warning! Exceeded max iter. Not optimized: {(~finished).sum().item()}", flush=True)
+            print(f"Warning! Binary search exceeded max iter. Not optimized: {(~finished).sum().item()}", flush=True)
             # print("Discarding batch")
             return p_cond
         pos_diff = (ent_diff > 0).float()
